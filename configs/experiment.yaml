@@ -1,0 +1,73 @@
+# Fixed settings for the comparison (PROJECT_DESIGN.md §4.3).
+# Changing anything here changes the experiment: record the change in the report.
+
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]     # identical for every w -> paired comparisons
+guidance_scales: [1, 3, 5, 7, 9]          # optional extension: [2, 12] if curves bend at the ends
+clip_seconds: 10.0
+loudness_lufs: -23.0                      # applied before metrics and listening
+
+prompts_csv: data/prompts.csv
+outputs_dir: outputs
+results_dir: results
+figures_dir: figures
+
+models:
+  sao:
+    hf_id: stabilityai/stable-audio-open-1.0
+    sample_rate: 44100
+    channels: 2
+    sampler: dpmpp-3m-sde
+    steps: 100
+    default_w: 7.0
+    experiments: [E1, E2, E3, E4]
+  audioldm2:
+    hf_id: cvssp/audioldm2
+    sample_rate: 16000
+    channels: 1
+    sampler: ddim
+    steps: 200
+    default_w: 3.5
+    experiments: [E1]
+
+# Null-condition variants (only the null changes, never the prompt; no negative prompt).
+null_variants:
+  default: model's own null (SAO zero conditioning, AudioLDM2 empty string "")
+  learned: tensor trained in E3 (src/audiocfg/null_embedding)
+  t5_empty: control - T5 embedding of the empty string (SAO only)
+  mean_caption: control - mean conditioning over captions (SAO only)
+
+prompt_sampling:
+  random_seed: 2026
+  sfx: { source: audiocaps_test, n: 100 }
+  music: { source: song_describer_nonvocal, n: 100 }
+
+stats:
+  bootstrap_reps: 10000
+  ci: 0.95
+  multiple_comparison: holm
+
+e2_copying:
+  candidate_percentile: 99.0       # of s_held (held-out nearest-neighbour similarity)
+  verify_percentile: 99.9          # of held-out signal-level match scores
+  embedders: [clap, panns]
+
+e3_null:
+  n_train_clips: 5000
+  val_fraction: 0.1
+  init: [zeros, normal]
+  optimizer: adamw
+  lr: 1.0e-3
+  max_steps: 5000
+
+e4_judge:
+  judge_model: Qwen/Qwen2-Audio-7B-Instruct
+  second_judge: audiobox-aesthetics
+  listening:
+    n_prompts_per_domain: 12
+    n_listeners: 12
+    pairs_per_listener: 60
+    attention_checks: 4
+  questions:
+    match: "Które nagranie lepiej odpowiada opisowi?"
+    realism: "Które nagranie brzmi bardziej naturalnie, jak prawdziwe nagranie?"
+    overall: "Które nagranie ogólnie wolisz?"

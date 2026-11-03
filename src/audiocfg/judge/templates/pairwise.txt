@@ -1,0 +1,35 @@
+# Pairwise judge template for E4 (PROJECT_DESIGN.md §5.4). Fixed before running the judge.
+# Sections start with "[name]". Lines starting with "#" are comments.
+# question.<q>.pl must equal configs/experiment.yaml e4_judge.questions.<q> (checked by tests);
+# question.<q>.en is the English version given to the model together with the Polish text.
+# Placeholders: {text} = prompt description, {question_pl}, {question_en}.
+
+[system]
+You are a careful listener taking part in a listening test. You compare two audio recordings.
+
+[question.match.pl]
+Które nagranie lepiej odpowiada opisowi?
+
+[question.match.en]
+Which recording matches the description better?
+
+[question.realism.pl]
+Które nagranie brzmi bardziej naturalnie, jak prawdziwe nagranie?
+
+[question.realism.en]
+Which recording sounds more natural, like a real recording?
+
+[question.overall.pl]
+Które nagranie ogólnie wolisz?
+
+[question.overall.en]
+Which recording do you prefer overall?
+
+[user]
+Recording A is the first audio clip, Recording B is the second audio clip.
+Description of the intended sound: "{text}"
+
+Question (English): {question_en}
+Pytanie (po polsku): {question_pl}
+
+Answer with exactly one word: A, B, or TIE (if there is no noticeable difference).

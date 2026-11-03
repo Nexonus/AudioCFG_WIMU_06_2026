@@ -1,27 +1,24 @@
 # AudioCFG
-WIMU Project for CFG with Null Embeddings on an audio-generating stable diffusion model - Warsaw's University of Technology, Winter 2026
+WIMU Project — Warsaw University of Technology, Winter 2026, Team 06
 
-PROJECT DESIGN PROPOSAL:
+**Topic (card S15):** “What guidance does to generated audio: the guidance scale, the null embedding, diversity, copying and what judges prefer”.
 
-Project name: AudioCFG
+Projekt badawczy: mierzymy, jak skala classifier-free guidance i wybór null embeddingu wpływają na różnorodność, kopiowanie danych treningowych, zgodność z promptem i jakość generacji w dwóch modelach text-to-audio (Stable Audio Open, AudioLDM2), oraz czy automatyczny sędzia preferuje tę samą skalę co słuchacze.
 
-Github repository:  
+**Aktualny projekt wstępny:** [PROJECT_DESIGN.md](PROJECT_DESIGN.md) (wersja 2, po uwagach prowadzącego).
+**Plan działania i mapa PB → eksperyment → kod → tabela/wykres:** [docs/PLAN.md](docs/PLAN.md).
 
-Project topic: “What guidance does to generated audio: the guidance scale, the null embedding, diversity, copying and what judges prefer”.
+## Szybki start (CPU, bez pobierania modeli)
 
-What needs to be done:
-A stable-diffusion model, that will use text prompts to generate audio or sound effects. Eg. “generate an effect of birds flying by on a windy autumn day.” This would yield a result audio wave in the dashboard.
-CFG Slider (Class-Free Guidance is a measure of how much creative freedom should we give a model, low values may cause problems as a model will not fully follow the prompt’s instructions. Too high values will make the neural network deterministic and sound highly synthetic. Our objective is to implement such hyperparameter and search for optimal values that will produce realistic audio following user’s instructions.
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -e ".[dev]"
+.venv/Scripts/python -m pytest -q
+.venv/Scripts/audiocfg analyze --synthetic        # suchy przebieg T1–T4, F1–F6
+```
 
-Tech stack, Tools proposals:
-Python, Py-Torch
-Stable Audio Open: https://huggingface.co/stabilityai/stable-audio-open-1.0
-Gradio: https://gradio.app/guides/quickstart
-Evaluation libraries (CLAP, FAD) 
-https://github.com/gudgud96/frechet-audio-distance
-https://github.com/LAION-AI/CLAP
+Na stacji z GPU: `pip install -e ".[gen,metrics,judge,app]"`, następnie polecenia
+`audiocfg prompts | sweep | metrics | copies | train-null | listening-plan | judge | analyze`
+(opis w `docs/PLAN.md`). Miejsca wymagające weryfikacji na prawdziwych wagach są oznaczone `TODO(M1)`.
 
-Evaluation metrics:
-CLAP (How much the generated audio is related to the input prompt, above 0.4 very good, 0.25 good, below 0.15 very bad).
-FAD (Sound’s quality and how much realistic the output audio is). 
-MOS (Mean Opinion Score - human-based evaluation, for example 10 listeners rating how much realistic the audio file is).
+Zespół: Jan Konarski, Jakub Szewczyk, Vladyslav Serhieiev
