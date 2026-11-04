@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+﻿# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AudioCFG: generated audio, raw datasets, model checkpoints (results/ and figures/ stay tracked)
+outputs/
+data/raw/
+*.wav
+*.flac

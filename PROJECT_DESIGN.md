@@ -1,4 +1,4 @@
-# AudioCFG — Projekt wstępny (Project Design)
+# AudioCFG — Projekt wstępny (Project Design), wersja 2
 
 **WIMU, semestr zimowy 2026 · Zespół 06 · Politechnika Warszawska**
 Karta z handoutu: **S15 — „What guidance does to generated audio: the guidance scale, the null embedding, diversity, copying and what judges prefer”**
@@ -10,301 +10,346 @@ Karta z handoutu: **S15 — „What guidance does to generated audio: the guidan
 | Repozytorium | https://github.com/Nexonus/AudioCFG_WIMU_06_2026.git |
 | Moc obliczeniowa | jedna stacja robocza z konsumenckim GPU |
 | Docelowe konferencje (wg karty) | ISMIR 2027, ICASSP 2028 |
-| Termin oddania design proposal | **21.10.2026 (środa), 23:59** |
-| Status | projekt wstępny, 2026-10-20 |
+| Status | wersja 2 po uwagach prowadzącego, 2026-10-28 |
+
+---
+
+## 0. Zmiany względem pierwszej wersji (odpowiedź na uwagi)
+
+| Uwaga prowadzącego | Co zmieniliśmy | Gdzie |
+|---|---|---|
+| Projekt sprowadzony do panelu z suwakiem; interfejs opisany dokładniej niż eksperymenty | Projekt jest teraz opisany jako **badanie**: 4 eksperymenty, każdy z porównaniem, danymi i planowaną tabelą lub wykresem. Gradio jest tylko narzędziem pomocniczym (podgląd i test odsłuchowy) i nie jest rezultatem badawczym | §2, §3, §8 |
+| Uczenie null embeddingu utożsamione z negatywnym promptem | **Negatywny prompt nie jest częścią projektu** i znika z interfejsu. Opisujemy, co dokładnie jest uczone (tensor warunkowania), na jakich danych, z jaką funkcją celu i jak porównujemy go z nullem domyślnym | §1.2, §5.3 |
+| Związek „unikania zakłóceń” z kopiowaniem | Nie twierdzimy, że negatywny prompt ani wyuczony null ograniczają kopiowanie. Kopiowanie mierzymy osobno (E2), a kopia może brzmieć zupełnie poprawnie | §5.2 |
+| 1. Porównanie skal CFG na dwóch modelach | Modele, wartości `w`, prompty, liczba generacji i ustawienia stałe są wypisane; kryterium wyboru „zalecanej skali” jest zdefiniowane przed eksperymentem | §4, §5.1 |
+| 2. Pomiar różnorodności | Różnorodność liczymy z **odległości między nagraniami tego samego promptu** (CCDS + drugi ekstraktor), a nie z CLAP tekst–audio | §5.1 |
+| 3. Sprawdzanie kopiowania | Zbiór porównawczy = nagrania z **opublikowanych list atrybucji** danych treningowych SAO. Kontrola = nagrania spoza treningu. Dwuetapowe odróżnienie kopii od podobnego dźwięku. Jasno opisane granice wniosków | §5.2 |
+| 4. Sędzia i test odsłuchowy | Sędzia: Qwen2-Audio, porównania parami w obu kolejnościach, model Bradleya–Terry'ego. Test odsłuchowy: dobór próbek, dokładne pytania, plan porównania z sędzią | §5.4 |
+| 5. Uzasadnienie miar | Progi CLAP usunięte i zastąpione kalibracją na prawdziwych nagraniach. Dla FD wskazane zbiory odniesienia i sposób porównywania ustawień | §6 |
+| „Wysokie CFG czyni generator deterministycznym” | Poprawione: CFG **nie** zmienia determinizmu, tylko może zmniejszać różnorodność między seedami. To właśnie mierzymy | §1.1 |
 
 ---
 
 ## 1. Opis problemu
 
-Dyfuzyjne modele text-to-audio podążają za promptem dzięki **classifier-free guidance (CFG)**. W każdym kroku odszumiania model wykonuje dwie predykcje: jedną warunkowaną promptem `c` i jedną warunkowaną warunkiem *pustym* (null) `∅`. Następnie łączy je:
+### 1.1 Classifier-free guidance
+
+Dyfuzyjne modele text-to-audio podążają za promptem dzięki **classifier-free guidance (CFG)**. W każdym kroku odszumiania model wykonuje dwie predykcje: jedną warunkowaną promptem `c` i jedną warunkowaną warunkiem pustym `∅` (null). Następnie łączy je:
 
 ```
 ε̂ = ε(x_t, ∅) + w · (ε(x_t, c) − ε(x_t, ∅))
 ```
 
-`w` to **skala guidance** (guidance scale). Dla `w = 1` mamy zwykłe próbkowanie warunkowe. Większe `w` mocniej przesuwa próbkę w stronę promptu. W generowaniu obrazów wyższe `w` daje lepszą zgodność z promptem, ale też **mniejszą różnorodność** i **częstsze kopiowanie danych treningowych**. Praca o przyspieszaniu Stable Audio Open (arXiv:2505.08175) wprost nazywa CFG „mieczem obosiecznym”: daje jakość i zgodność z promptem kosztem niskiej różnorodności i przesycenia (over-saturation). Gałąź null `∅` to zwykle stały wektor: same zera albo embedding pustego napisu. Praca z 2026 roku dotycząca mowy (arXiv:2609.25411) zastępuje go **wyuczonym null embeddingiem**. Raportuje, że jakość przy stałym nullu gwałtownie spada powyżej pewnej skali, a przy wyuczonym nullu osiąga stabilne plateau.
+`w` to **skala guidance**. Dla `w = 1` mamy zwykłe próbkowanie warunkowe, a większe `w` mocniej przesuwa próbkę w stronę promptu.
 
-> **Uwaga o konwencji skali.** W pracy 2609.25411 używany jest wariant „conditional baseline”: `ε̂ = ε(c) + w'·(ε(c) − ε(∅))`. Tam `w' = 0` oznacza brak guidance, co odpowiada `w = 1 + w'` w zapisie powyżej. W całym projekcie używamy zapisu standardowego (jak w Stable Audio Open i `diffusers`) i przy porównaniach z literaturą przeliczamy skale.
+**Korekta względem pierwszej wersji:** wysokie `w` **nie czyni generatora deterministycznym**.
+- Determinizm zależy od samplera: przy tym samym seedzie i deterministycznym samplerze (np. DDIM, η = 0) wynik jest identyczny dla *każdej* wartości `w`.
+- `w` może natomiast zmniejszać **różnorodność**, czyli zmniejszać różnice między generacjami z *różnych* seedów dla tego samego promptu.
 
-W audio `w` jest hiperparametrem dobieranym „na ucho”, a wartości domyślne się różnią. Stable Audio Open używa 7 (tak też w 2603.04366), a AudioLDM2, Tango i MusicGen około 3–3,5. Nie znaleźliśmy pracy, która dla audio raportowałaby, jak różnorodność, kopiowanie i preferencje sędziego zmieniają się z `w`. Nie znaleźliśmy też pracy sprawdzającej, czy automatyczny sędzia preferuje tę samą skalę co słuchacze.
+Czy i jak bardzo tak się dzieje w audio, jest jednym z pytań projektu, a nie jego założeniem. W obrazach wyższe `w` zmniejsza różnorodność i zwiększa kopiowanie danych treningowych. W pracy o Stable Audio Open (arXiv:2505.08175) CFG jest opisane jako źródło niskiej różnorodności i przesycenia, ale nikt nie zmierzył tego w funkcji `w` dla audio.
 
-### Pytania badawcze
+### 1.2 Null embedding a negatywny prompt
 
-- **PB1:** Jak *różnorodność w obrębie promptu*, *różnorodność między promptami*, *copy rate* (odsetek kopii), *zgodność z promptem* i *jakość* zmieniają się wraz ze skalą guidance? Badamy to na dwóch otwartych modelach text-to-audio, osobno dla muzyki i efektów dźwiękowych.
-- **PB2:** Czy wybór null embeddingu (zerowy, pusty napis, średnia z opisów, **wyuczony**) zmienia te krzywe, szczególnie przy wysokich skalach?
-- **PB3:** Czy sędzia audio-językowy (audio-language judge) preferuje **inną skalę niż ludzcy słuchacze**? (luka sędzia–słuchacz)
+**Null embedding** to reprezentacja warunku, którą model dostaje w gałęzi bezwarunkowej `ε(x_t, ∅)`. W Stable Audio Open jest to stała (zerowa) sekwencja warunkowania. Model nauczył się ją rozumieć jako „brak opisu”, bo podczas treningu warunek był losowo zastępowany tą wartością. Praca arXiv:2609.25411 (synteza mowy) zastępuje stały null **wyuczonym** i raportuje stabilniejsze wyniki przy dużych skalach.
+
+**Negatywny prompt** to inna operacja: w miejsce `∅` wstawia się embedding *konkretnego tekstu*, np. „loud buzzing”. Kierunek guidance zmienia się wtedy z „bardziej jak prompt niż brak opisu” na „bardziej jak prompt niż ten tekst”. **Negatywny prompt nie jest częścią projektu.** W eksperymencie E3 zmieniamy wyłącznie reprezentację braku warunku, a tekst promptu pozostaje ten sam.
+
+> **Konwencja skali.** Praca 2609.25411 używa zapisu `ε̂ = ε(c) + w'·(ε(c) − ε(∅))`, w którym `w' = 0` oznacza brak guidance, czyli `w = 1 + w'`. W projekcie używamy zapisu standardowego (jak w Stable Audio Open i `diffusers`).
+
+### 1.3 Luka w literaturze
+
+W audio `w` dobiera się „na ucho”, a wartości domyślne się różnią: Stable Audio Open używa 7, AudioLDM2, Tango i MusicGen około 3–3,5. Nie znaleźliśmy pracy, która dla audio raportuje krzywe różnorodności, kopiowania i preferencji sędziego w funkcji `w`. Nie znaleźliśmy też pracy sprawdzającej, czy automatyczny sędzia preferuje tę samą skalę co słuchacze.
+
+---
+
+## 2. Pytania badawcze, eksperymenty i planowane wyniki
+
+Każde pytanie badawcze ma przypisany eksperyment, dane, porównanie i konkretną tabelę lub wykres. Rezultatem projektu są te tabele i wykresy, a nie interfejs.
+
+| PB | Pytanie | Eksperyment | Porównanie | Dane | Planowany wynik |
+|---|---|---|---|---|---|
+| **PB1a** | Czy generacje tego samego promptu stają się do siebie bardziej podobne, gdy rośnie `w`? | **E1** sweep skal (§5.1) | różnorodność dla `w ∈ {1,3,5,7,9}`, te same seedy; 2 modele × 2 domeny | 200 promptów × 10 seedów × 5 skal × 2 modele | **Wykres F1:** CCDS vs `w` (linie: model × domena, 95% CI). **Wykres F2:** CLAP vs CCDS z `w` jako parametrem (krzywa kompromisu). **Tabela T1** |
+| **PB1b** | Jak zgodność z promptem i jakość zmieniają się z `w`? Jaka jest zalecana skala? | **E1** | CLAP (skalibrowany), FD_openl3, KL_passt dla każdego `w` | jak wyżej + zbiory odniesienia (§6) | **Wykres F3:** CLAP_norm, FD, KL vs `w`. **Tabela T1** z zalecaną skalą wg kryterium z §5.1 |
+| **PB2** | Czy częstość kopiowania danych treningowych rośnie z `w`? | **E2** detekcja kopii (§5.2) | odsetek kopii dla każdego `w` vs rozkład kontrolny z nagrań spoza treningu | generacje z E1 dla SAO; nagrania z list atrybucji SAO; nagrania kontrolne | **Wykres F4:** rozkłady podobieństwa do najbliższego sąsiada (generacje dla każdego `w` vs kontrola). **Tabela T2:** odsetek kandydatów i potwierdzonych kopii dla każdego `w` (ograniczenie dolne) |
+| **PB3** | Czy wyuczony null embedding zmienia krzywe z PB1 i PB2, szczególnie przy dużym `w`? | **E3** wyuczony null (§5.3) | wyuczony null vs null domyślny (zerowy), ten sam sweep, te same seedy | SAO; dane do uczenia nulla z list atrybucji | **Wykres F5:** krzywe z F1/F3 nałożone (null domyślny vs wyuczony). **Tabela T3:** Δ(wyuczony − domyślny) dla każdego `w` i metryki, z parowym CI |
+| **PB4** | Którą skalę preferuje sędzia automatyczny, a którą słuchacze? Czy się różnią? | **E4** sędzia + test odsłuchowy (§5.4) | ranking skal (Bradley–Terry) u sędziego vs u słuchaczy, na tych samych parach | 24 prompty × 10 par skal; 12 słuchaczy | **Wykres F6:** wyniki Bradleya–Terry'ego vs `w` (sędzia i słuchacze na jednym wykresie). **Tabela T4:** preferowana skala obu stron, różnica z CI, zgodność decyzji parami |
 
 ### Hipotezy
 
-- **H1:** Różnorodność maleje monotonicznie z `w`. Zgodność z promptem (CLAP) rośnie, a potem się nasyca. Copy rate rośnie z `w`.
-- **H2:** Wyuczony null utrzymuje wyższą różnorodność i jakość przy dużym `w`, czyli spłaszcza degradującą część krzywych. W mowie zaobserwowano plateau jakości zamiast spadku (2609.25411).
-- **H3:** Skala preferowana przez sędziego jest wyższa niż skala preferowana przez słuchaczy. Automatyczne strojenie `w` daje więc za wysoką wartość.
+- **H1:** CCDS maleje z `w`, a CLAP rośnie i się nasyca, więc między nimi istnieje kompromis.
+- **H2:** Odsetek kandydatów na kopie rośnie z `w`.
+- **H3:** Wyuczony null zmniejsza spadek jakości (FD) przy dużym `w`. W mowie zaobserwowano plateau jakości zamiast spadku.
+- **H4:** Sędzia preferuje wyższą skalę niż słuchacze.
 
-### Co obaliłoby hipotezę (zapisane przed jakimkolwiek uruchomieniem na dużą skalę)
+### Co obaliłoby hipotezę (zapisane przed uruchomieniem na dużą skalę)
 
-> Na **obu** modelach różnorodność, copy rate i preferencja sędziego **nie** zmieniają się ze skalą guidance bardziej niż rozrzut między seedami (95% przedziały bootstrapowe dla `w=1` i `w=9` nakładają się dla każdej metryki), **oraz** słuchacze i sędzia preferują tę samą skalę.
+> Na **obu** modelach różnorodność, odsetek kopii i preferencja sędziego **nie** zmieniają się z `w` bardziej niż rozrzut między seedami (95% CI dla `w=1` i `w=9` nakładają się dla każdej z tych metryk), **oraz** słuchacze i sędzia preferują tę samą skalę (CI różnicy zawiera 0).
 
-Jeśli już pilotaż (etap M2) pokaże płaskie krzywe na Stable Audio Open, raportujemy to jako wynik („guidance w audio jest tańsze, niż sugeruje literatura obrazowa”) i nie skalujemy eksperymentu.
-
----
-
-## 2. Rezultaty projektu
-
-1. **Zbiór danych z przemiatania (sweep):** wygenerowane klipy i metadane (model, id promptu, skala, typ nulla, seed) dla każdego warunku, wraz ze wszystkimi metrykami w plikach Parquet/CSV. Każda liczba w raporcie pochodzi z jednego z tych plików.
-2. **Krzywe:** różnorodność (CCDS), copy rate, CLAP, FD/KL i ocena sędziego w funkcji skali guidance. Osobno dla każdego modelu, typu nulla i domeny (muzyka vs. efekty dźwiękowe), z przedziałami bootstrapowymi.
-3. **Wyuczony null embedding** dla Stable Audio Open (wagi i skrypt treningowy).
-4. **Test odsłuchowy:** preferencje słuchaczy vs. preferencje sędziego w zależności od skali.
-5. **Dashboard w Gradio (prototyp na 04.11):** prompt tekstowy na wejściu i przebieg audio na wyjściu. Zawiera **suwak CFG**, **wybór null embeddingu**, wybór seeda i liczby próbek oraz zakładkę do przeglądania wyników przemiatania i krzywych.
-6. **Raport w formie artykułu:** krzywe, zalecana skala dla każdego zastosowania (muzyka / efekty) i luka sędzia–słuchacz.
-7. **Log agentów:** prompty i sesje agentów kodujących, które wytworzyły kod, w katalogu `agent_logs/` (zasada z handoutu).
+Jeśli pilotaż (§9, etap M2) pokaże płaskie krzywe, raportujemy to jako wynik („guidance w audio jest tańsze, niż sugeruje literatura obrazowa”) i nie rozszerzamy eksperymentu.
 
 ---
 
-## 3. Modele i dane
+## 3. Rezultaty projektu
 
-### 3.1 Generatory (dwa otwarte modele text-to-audio)
-
-| Model | Uzasadnienie | Warunkowanie / null | Dane treningowe (do sprawdzania kopii) |
-|---|---|---|---|
-| **Stable Audio Open 1.0** (`stabilityai/stable-audio-open-1.0`, `stable-audio-tools` / `diffusers`) | Model główny. Latentny DiT, enkoder tekstu T5, 44,1 kHz stereo, do 47,55 s; VAE daje latent 64 kanały × 21,5 Hz | Sekwencja T5 + warunkowanie czasem (`seconds_start`, `seconds_total`); gałąź bezwarunkowa = wyzerowane / puste warunkowanie | Podzbiory **Freesound + Free Music Archive (FMA)** na licencjach CC. Część muzyczna to 13 874 nagrań FMA (970 h, wg 2603.04366). Częściowo publiczne, więc nadają się do sprawdzania kopii |
-| **AudioLDM2** (`cvssp/audioldm2`, `diffusers`) *(alternatywnie: Tango 2)* | Drugi model o innej architekturze (latentny UNet, warunkowanie CLAP + GPT-2/T5) | Embeddingi pustego / negatywnego promptu | AudioCaps, AudioSet, WavCaps itd. Część publiczna: **AudioCaps train** |
-| *Punkt odniesienia:* **Stable Audio Open Small** (model po ARC post-training, 2505.08175) | Ta sama rodzina co SAO, ale **działa bez CFG**, czyli daje punkt „bez guidance” z innego mechanizmu | brak gałęzi null | jak SAO |
-
-**Wyuczony null embedding** (PB2) trenujemy **tylko dla Stable Audio Open**. Tego wymaga karta, a to mieści się w budżecie obliczeniowym. SAO Small jest opcjonalnym punktem odniesienia, a nie trzecim pełnym przemiataniem: generujemy dla niego te same prompty i seedy raz.
-
-### 3.2 Prompty (200)
-
-- **100 promptów efektów dźwiękowych** z opisów zbioru testowego AudioCaps, np. „birds chirping while wind blows through trees”. Ten sam zbiór służy do oceny SAO w 2505.08175, gdzie CCDS liczono na 203 promptach AudioCaps.
-- **100 promptów muzycznych** z **niewokalnego podzbioru Song Describer Dataset**, używanego do ewaluacji SAO w 2603.04366 i w pracy o SAO.
-- Do oceny różnorodności dodajemy kilka **szerokich, niejednoznacznych promptów** (np. „fire crackling”, „water”), tak jak w teście odsłuchowym 2505.08175. Przy takich promptach spadek różnorodności jest najlepiej słyszalny.
-- Lista promptów jest ustalona i wersjonowana (`data/prompts.csv`) przed pierwszym uruchomieniem. Obie domeny raportujemy osobno.
-
-### 3.3 Korpusy referencyjne
-
-- **Referencja dla FD/KL:** prawdziwe nagrania dla tych samych opisów (AudioCaps test, Song Describer).
-- **Sprawdzanie kopii:** podzbiór *treningowy* (publiczna część Freesound/FMA dla SAO, AudioCaps-train dla AudioLDM2) oraz zbiór **odłożonych** (held-out) prawdziwych nagrań, o których wiadomo, że *nie* było ich w treningu. Ten drugi zbiór daje rozkład zerowy (sekcja 4.3).
+1. **Tabele T1–T4 i wykresy F1–F6** z §2, każdy z 95% przedziałami ufności. Każda liczba pochodzi z pliku w `results/`.
+2. **Zbiór generacji** z metadanymi (model, prompt, `w`, null, seed, sampler) oraz tabela metryk (Parquet).
+3. **Wyuczony null embedding** dla SAO: tensor, skrypt uczący, krzywa straty.
+4. **Wyniki testu odsłuchowego** (zanonimizowane CSV) i protokół testu.
+5. **Raport w formie artykułu:** odpowiedzi na PB1–PB4 i zalecana skala dla każdego modelu i domeny.
+6. **Narzędzie pomocnicze (Gradio):** podgląd generacji dla zadanego `w` i nulla oraz interfejs testu odsłuchowego. Bez pola na negatywny prompt. To narzędzie nie jest rezultatem badawczym.
+7. **Log agentów** (`agent_logs/`), zgodnie z zasadami handoutu.
 
 ---
 
-## 4. Metodologia
+## 4. Modele, prompty i stałe ustawienia
 
-### 4.1 Plan przemiatania (sweep)
+### 4.1 Dwa modele
 
-| Czynnik | Poziomy |
-|---|---|
-| Skala guidance `w` | 1, 3, 5, 7, 9 (pilotaż); w pełnym przemiataniu dodajemy 2 i 12, jeśli krzywe się zaginają |
-| Null embedding (SAO) | zerowy (domyślny), pusty napis T5, średni embedding opisów, **wyuczony** |
-| Null embedding (AudioLDM2) | domyślny pusty prompt |
-| Seedy na prompt | 10, wspólne dla wszystkich skal (ta sama lista seedów, czyli ten sam szum początkowy `x_T`, dla każdego `w`) |
-| Długość klipu | 10 s (mniejszy koszt obliczeń; ta sama dla każdego warunku) |
-| Sampler / kroki | stałe dla danego modelu: SAO 100 kroków (jak w 2505.08175 i 2603.04366); zmniejszamy do 50 tylko jednakowo dla wszystkich warunków. 2505.08175 pokazuje, że mniej kroków pogarsza FD, więc zmiana kroków jest osobnym czynnikiem, a nie skrótem |
-
-**Te same seedy dla każdej skali** dają porównania parami: jedyną rzeczą, która zmienia się między dwoma klipami, jest `w`. DITTO (2401.12179) pokazuje, że początkowy szum `x_T` w dużej mierze wyznacza wynik i można nim nawet sterować. Dlatego:
-- zapisujemy `x_T` (seed) dla każdego klipu;
-- zapisujemy, czy sampler jest **deterministyczny** (DDIM, η = 0: różnorodność pochodzi tylko z `x_T`) czy **stochastyczny** (dodatkowy szum w każdym kroku). Różnorodność porównujemy tylko przy tym samym samplerze;
-- zapisujemy dokładną konfigurację samplera i harmonogramu szumu. 2603.04366 zauważa, że SAO zachowuje się stabilniej w formie variance-preserving niż w variance-exploding z publicznego kodu.
-
-Rozmiar: 200 promptów × 10 seedów × 5 skal = **10 000 klipów na parę (model, null)**. To około 6 konfiguracji, czyli łącznie około 60 tys. klipów. Szacunek czasu obliczeń jest w sekcji 7.
-
-### 4.2 Różnorodność
-
-- **Różnorodność w obrębie promptu: CCDS** (*CLAP Conditional Diversity Score*, zaproponowany w 2505.08175). To średnia kosinusowa odległość CLAP między parami generacji dla tego samego promptu, uśredniona po promptach. Autorzy pokazują, że CCDS zgadza się z oceną różnorodności w teście odsłuchowym, więc przyjmujemy go jako metrykę główną. Wynik SAO (100 kroków, CFG 7) z tej pracy służy nam jako punkt kontrolny odtworzenia.
-- Drugi ekstraktor (**PANNs** dla efektów, **MERT** dla muzyki) sprawdza, czy trend nie zależy od jednego embeddingu.
-- **Różnorodność między promptami:** **recall i coverage w przestrzeni PaSST** (`R_passt`, `C_passt`, jak w 2505.08175) oraz odległość między średnimi embeddingami promptów.
-- **Vendi score** jako pomocnicza miara różnorodności, uwzględniająca liczebność próby.
-- **Zastrzeżenie interpretacyjne:** 2505.08175 zauważa, że różnorodność *rośnie*, gdy model przestaje słuchać promptu, bo staje się wtedy w praktyce generatorem bezwarunkowym. Różnorodności przy niskim `w` nie interpretujemy więc w oderwaniu od CLAP: raportujemy obie krzywe razem (wykres różnorodność vs. CLAP z `w` jako parametrem).
-
-### 4.3 Copy rate (z właściwym rozkładem zerowym zamiast sztywnego progu)
-
-1. Dla każdego wygenerowanego klipu znajdujemy najbliższego sąsiada w podzbiorze treningowym (embedding CLAP / PANNs, indeks FAISS) i zapisujemy podobieństwo `s_gen`.
-2. Dla każdego **odłożonego prawdziwego nagrania** liczymy to samo podobieństwo do najbliższego sąsiada w zbiorze treningowym (`s_held`). Tak wygląda rozkład podobieństw dla nowego audio, które nie zostało skopiowane.
-3. **Copy rate** = odsetek wygenerowanych klipów, dla których `s_gen` przekracza 99. percentyl `s_held`. Dla każdej skali raportujemy też pełny rozkład `s_gen` na tle `s_held`.
-4. Najbardziej podejrzane przypadki weryfikujemy odsłuchem i dopasowaniem chromy / fingerprintu. Potwierdzony odsetek raportujemy obok odsetka z embeddingów.
-5. Zbiór treningowy jest tylko częściowo publiczny, więc copy rate raportujemy jako **ograniczenie dolne**. Karta wskazuje to jako główne ryzyko.
-
-### 4.4 Zgodność z promptem i jakość
-
-Używamy **tego samego zestawu metryk co prace o Stable Audio Open** (2505.08175, 2603.04366), żeby nasze wyniki dało się porównać z literaturą:
-- **FD_openl3** (odległość Frécheta w przestrzeni OpenL3) zamiast samego FAD-VGGish. Jako metrykę uzupełniającą liczymy też FAD-VGGish (`frechet-audio-distance`). FD liczymy na całym warunku (2000 klipów na skalę), a jest on obciążony liczebnością próby, więc utrzymujemy jednakowe N we wszystkich warunkach.
-- **KL_passt:** rozbieżność KL rozkładów etykiet klasyfikatora PaSST między generacją a referencją.
-- **CLAP score:** podobieństwo kosinusowe embeddingów tekstu i audio (LAION-CLAP; MS-CLAP jako drugi model, żeby nie oceniać tym samym CLAP-em, którego używamy do różnorodności).
-- **Audiobox Aesthetics** (wyuczony predyktor jakości) jako dodatkowy sygnał jakości.
-
-**Interpretacja CLAP:** porównujemy wartości **względne** między skalami, a nie sztywne progi. Dla odniesienia: oryginalny SAO (100 kroków, CFG 7) osiąga na AudioCaps CLAP ≈ 0,29 (2505.08175, tab. 1), a na muzyce z Song Describer ≈ 0,41 (2603.04366, tab. 1). Ten sam model daje więc różne wartości bezwzględne w zależności od domeny i checkpointu CLAP, dlatego progi typu „> 0,4 = bardzo dobrze” nie byłyby wiarygodne.
-
-### 4.5 Wyuczony null embedding (PB2)
-
-**Co robi praca źródłowa (2609.25411).** Model TTS jest trenowany od zera. Każdy warunek (mówca, tekst) jest niezależnie zastępowany z prawdopodobieństwem 0,1 przez **osobny wyuczalny embedding** (inicjalizacja N(0, 1)), optymalizowany **razem z modelem**. Stały null zerowy ma dwie wady: leży poza rozkładem wejść modelu i nie rozróżnia typów warunkowania. Wynik: plateau jakości przy dużych skalach zamiast spadku, lepsze podobieństwo do mówcy i preferencja słuchaczy w CMOS.
-
-**Nasza adaptacja do SAO.** Nie możemy trenować SAO od zera, więc testujemy dwa warianty o rosnącym koszcie:
-1. **Null post-hoc (zamrożony model):** cały SAO jest zamrożony, a warunek null to trenowalny tensor o kształcie warunkowania T5 (inicjalizacja N(0, 1) jak w pracy albo od wektora zerowego). Optymalizujemy go stratą dyfuzyjną (v-prediction) w gałęzi bezwarunkowej na publicznej części FMA/Freesound. Trenujemy tylko tensor, więc mieści się to na jednym konsumenckim GPU. To odstępstwo od pracy (tam model uczy się razem z nullem) i tak je opisujemy w raporcie.
-2. **Krótki wspólny fine-tuning (bliżej pracy, jeśli pozwoli budżet):** LoRA na DiT + wyuczalny null, z dropoutem warunku p = 0,1, jak w pracy. Trenujemy na tym samym podzbiorze FMA CC, krótko i z porównaniem do fine-tuningu z nullem zerowym przy identycznej liczbie kroków. Bez tej kontroli nie wiedzielibyśmy, czy zmiana pochodzi z nulla, czy z samego fine-tuningu.
-
-Tanie warianty kontrolne, bez treningu: **zerowy** (domyślny), **kodowanie pustego napisu przez T5**, **średnia embeddingów opisów**.
-
-**Rozszerzenie opcjonalne, rozdzielony CFG:** SAO ma dwa warunki, tekst i czas trwania (`seconds_total`). Analogicznie do równania (5) z 2609.25411 można użyć osobnych nulli i osobnych skal `w_text`, `w_timing`. Robimy to tylko, jeśli zostanie czas po PB1–PB3.
-
-Ten sam plan przemiatania i metryki co w sekcji 4.1, więc krzywe można bezpośrednio nałożyć na siebie.
-
-### 4.6 Automatyczny sędzia
-
-- Otwarty sędzia audio-językowy: **Qwen2-Audio-7B-Instruct**, skwantyzowany do 4/8 bitów, jeśli wymaga tego VRAM.
-- **Ocena punktowa:** ocena 1–10 ogólnej jakości i zgodności z promptem dla każdego klipu. Szablon promptu sędziego jest stały i trzymany w repozytorium.
-- **Ocena parami:** ten sam prompt i seed przy dwóch skalach; sędzia wybiera lepszy klip. Każdą parę pokazujemy **w obu kolejnościach**, żeby kontrolować skłonność do wybierania pozycji (position bias). Dopasowanie modelu Bradleya–Terry'ego po skalach daje **skalę preferowaną przez sędziego**.
-- Opcjonalnie drugi sędzia (wyuczony scorer, np. Audiobox Aesthetics), żeby wynik nie zależał od jednego sędziego.
-
-### 4.7 Test odsłuchowy (PB3)
-
-- **12 słuchaczy** (wymóg karty). Dla porównania: 2603.04366 miała n = 15. Zrównoważona próbka, np. 20 promptów (10 muzycznych + 10 efektów) × 5 skal, ten sam seed.
-- Zadanie w formacie **MUSHRA-podobnym** (jak webMUSHRA w 2505.08175): dla każdego promptu słuchacz odsłuchuje 5 wersji w losowej kolejności i ocenia każdą w skali 1–5 w trzech osiach: **jakość dźwięku**, **zgodność z promptem** i, dla zestawów kilku seedów, **różnorodność**. Te same trzy osie stosują obie prace o SAO, więc wyniki będą porównywalne. Z ocen wyprowadzamy porównania parami do modelu Bradleya–Terry'ego.
-- Wariant alternatywny: porównania parami **CMOS** (skala −2…+2, jak w 2609.25411), jeśli pilotaż pokaże, że ocena 5 wersji naraz jest dla słuchaczy zbyt trudna.
-- Słuchacze dostają te same instrukcje co sędzia, więc oba wyniki dotyczą tego samego zadania.
-- Interfejs: strona Gradio w tej samej aplikacji (zakładka `listening_test`). Odpowiedzi są anonimizowane i zapisywane do CSV.
-- Karta wymaga **zgody komisji etycznej przed zbieraniem danych** oraz zaliczenia dla każdego uczestnika. Wniosek składamy do **04.11.2026**, żeby zgoda nie blokowała testu w styczniu.
-
-### 4.8 Statystyka
-
-- 95% **przedziały bootstrapowe** dla każdej metryki: losowanie promptów (i seedów w obrębie promptów) ze zwracaniem.
-- „Zmienia się ze skalą” oznacza, że przedział dla `w=1` nie nakłada się z przedziałem dla skali o skrajnej wartości. To operacyjna postać kryterium obalenia.
-- Testy parami między skalami (te same seedy), z poprawką Holma na wiele metryk.
-- Luka sędzia–słuchacz: różnica między dwiema preferowanymi skalami (argmax z modelu Bradleya–Terry'ego), z przedziałem bootstrapowym.
-
----
-
-## 5. Architektura systemu
-
-```
-                ┌──────────── configs/*.yaml (model, skale, null, seedy, sampler) ───────────┐
-                ▼                                                                             │
-data/prompts.csv ─► src/generate/ ─► outputs/clips/{model}/{null}/{w}/{prompt}_{seed}.wav     │
-                     (wrappery SAO,        │   + outputs/meta.parquet                         │
-                      AudioLDM2 z hookiem  ▼                                                  │
-                      CFG + null)       src/metrics/  ─► results/metrics.parquet              │
-                                         ├ różnorodność (CCDS, PANNs/MERT, R/C_passt, Vendi)  │
-                                         ├ kopie (FAISS NN vs train + rozkład held-out)       │
-                                         ├ clap_score, fd_openl3, kl_passt, fad, aesthetics   │
-                                         └ sędzia (Qwen2-Audio punktowo + parami)             │
-                                                   ▼                                          │
-                                        src/analysis/ ─► figures/, tables/ (bootstrap)        │
-                                                                                              │
-src/null_embedding/ ─► checkpoints/null_sao.pt ───────────────────────────────────────────────┘
-app/ (Gradio): zakładki Generowanie (prompt, suwak CFG, wybór nulla, seed, N) · Wyniki · Test odsłuchowy
-```
-
-### Struktura repozytorium
-
-```
-AudioCFG/
-├── app/                  # dashboard Gradio (generowanie / wyniki / test odsłuchowy)
-├── articles/             # przeczytane artykuły (PDF) z listy „read first”
-├── configs/              # konfiguracje YAML przemiatania, po jednej na eksperyment
-├── data/                 # prompts.csv, listy referencyjne i held-out (bez audio w gicie)
-├── src/
-│   ├── models/           # wspólny wrapper: generate(prompt, w, null, seed) dla SAO i AudioLDM2
-│   ├── null_embedding/   # trening wyuczonego nulla + warianty bazowe
-│   ├── metrics/          # różnorodność, kopie, clap, fd/kl, sędzia
-│   └── analysis/         # bootstrap, krzywe, Bradley–Terry
-├── scripts/              # punkty wejścia CLI (run_sweep.py, compute_metrics.py, ...)
-├── results/              # tabele metryk (w gicie), wykresy
-├── agent_logs/           # prompty i sesje agentów kodujących (zasada z handoutu)
-├── PROJECT_DESIGN.md
-└── README.md
-```
-
-Kluczowa zasada: generowanie jest **wznawialne i idempotentne**. Ścieżka każdego klipu koduje jego warunek, więc przerwane wielogodzinne przemiatanie wznawia się w miejscu przerwania i nigdy nie generuje gotowych klipów ponownie.
-
-### Stos technologiczny
-
-Python 3.11, PyTorch, `stable-audio-tools` / `diffusers`, `transformers` (Qwen2-Audio, T5), `stable-audio-metrics` (FD_openl3, KL_passt, CLAP, jak w pracach o SAO), `laion-clap`, `msclap`, `frechet-audio-distance`, `faiss`, `peft` (LoRA, wariant 2 z 4.5), `torchaudio`/`librosa`, `pandas`/`pyarrow`, `matplotlib`/`seaborn`, **Gradio** (dashboard i test odsłuchowy), konfiguracje `hydra`/YAML, `pytest`. Pliki audio są przechowywane poza gitem (dysk lokalny / dataset na Hugging Face). Wersjonujemy tylko metadane i metryki.
-
----
-
-## 6. Harmonogram
-
-### 6.1 Terminy przedmiotu (rozkład jazdy WIMU 26Z)
-
-| Data | Wydarzenie | Znaczenie dla projektu |
+| | **Stable Audio Open 1.0** (SAO) | **AudioLDM2** (`cvssp/audioldm2`) |
 |---|---|---|
-| 07.10.2026 | Publikacja tematów | — |
-| 14.10.2026 | Przypisanie zespołów | — |
-| **21.10.2026 (śr.) 23:59** | **Design proposal deadline** | ten dokument |
-| **04.11.2026 (śr.) 23:59** | **Zgłoszenie gotowości prototypu** | działający Gradio + SAO + suwak CFG + mini-pilotaż |
-| **10.11.2026 (wt.) 23:59** | **Prototyp: deadline na spotkania** | prezentacja prototypu prowadzącemu |
-| 25.11.2026 | Kolokwium 1 | tydzień o mniejszym obciążeniu projektem |
-| _TBA_ | Standup 1, Standup 2 | statusy po M3 i po M4 |
-| 13.01.2027 | Wykład: diffusion (gen. audio pt. 4) | temat bezpośrednio związany z projektem |
-| **15.01.2027 (pt.) 23:59** | **Projekty: termin zwolnienia** | **cel zespołu:** zamknięte wyniki i raport |
-| 20.01.2027 | Kolokwium 2 | — |
-| **22.01.2027 (pt.) 23:59** | **Projekty: deadline finalny** | bufor na poprawki |
-| **27.01.2027** | **Projekty demo** | prezentacja dashboardu i wyników |
+| Architektura | latentny DiT, enkoder tekstu T5, 44,1 kHz stereo | latentny UNet, warunkowanie CLAP + GPT-2/T5, 16 kHz |
+| Null domyślny | zerowa sekwencja warunkowania (do potwierdzenia w kodzie `stable-audio-tools` w M1) | embedding pustego napisu `""` (bez negatywnego promptu) |
+| Domyślne `w` | 7 | 3,5 |
+| Dane treningowe | Freesound + FMA na licencjach CC; **opublikowane listy atrybucji** (§5.2) | AudioCaps, AudioSet, WavCaps i in.; tylko część publiczna |
+| Rola | E1, E2, E3, E4 | E1 (drugi model wymagany przez kartę) |
 
-### 6.2 Plan prac
+Przy porównaniu dwóch modeli nie zestawiamy bezwzględnych wartości metryk między nimi, bo różnią się pasmem, długością i danymi. Porównujemy **kształt krzywych w funkcji `w`** w obrębie każdego modelu.
 
-| Etap | Termin | Zakres | Kryterium zakończenia |
+### 4.2 Prompty (200, ustalone przed eksperymentem)
+
+- **100 promptów SFX** losowanych ze zbioru testowego AudioCaps (stały seed losowania).
+- **100 promptów muzycznych** losowanych z niewokalnego podzbioru Song Describer Dataset.
+- Lista jest zapisana w `data/prompts.csv` i commitowana przed pierwszym uruchomieniem E1.
+- Prompty są tekstami z tych zbiorów, więc do każdego promptu istnieje prawdziwe nagranie. Daje to zbiór odniesienia dla FD i kalibracji CLAP (§6).
+
+### 4.3 Ustawienia stałe podczas porównania
+
+| Ustawienie | Wartość |
+|---|---|
+| Badane skale `w` | **1, 3, 5, 7, 9**, wszystkie dla obu modeli (zawierają domyślne 3,5 / 7 w przybliżeniu). W pełnym przebiegu dodajemy `w = 2` i `w = 12`, jeśli krzywe zaginają się na krańcach |
+| Generacje na (prompt, `w`) | **10**, seedy 0–9, **identyczne dla każdego `w`**: ten sam szum początkowy, więc między klipami zmienia się tylko `w` |
+| Długość klipu | 10 s |
+| Sampler i liczba kroków | stały w obrębie modelu: SAO DPM++ 3M SDE, 100 kroków; AudioLDM2 DDIM, 200 kroków (domyślne). Zapisywany w metadanych |
+| Null | domyślny (E1, E2); w E3 zmieniany jest **tylko** null |
+| Prompt | bez zmian, bez negatywnego promptu |
+| Głośność | klipy normalizowane do −23 LUFS przed metrykami i odsłuchem |
+
+Skala: 200 promptów × 10 seedów × 5 skal = **10 000 klipów na model**. E3 dokłada 10 000 klipów SAO z wyuczonym nullem. Razem około 30 000 klipów.
+
+---
+
+## 5. Eksperymenty
+
+### 5.1 E1 — Sweep skal CFG: różnorodność, zgodność, jakość (PB1)
+
+**Różnorodność w obrębie promptu: porównanie nagrań między sobą.** CLAP tekst–audio mierzy zgodność z opisem, a nie podobieństwo generacji do siebie, więc różnorodności z niego nie liczymy. Dla każdego promptu `p` i skali `w` mamy 10 klipów:
+
+1. Liczymy embedding audio każdego klipu: **LAION-CLAP (audio)** oraz drugi ekstraktor, **PANNs** dla SFX i **MERT** dla muzyki.
+2. **CCDS(p, w)** = średnia odległość kosinusowa po wszystkich 45 parach klipów. To metryka *CLAP Conditional Diversity Score* z arXiv:2505.08175, gdzie autorzy pokazali jej zgodność z oceną różnorodności przez słuchaczy.
+3. Wynik dla `w` to średnia CCDS(p, w) po promptach. 95% CI liczymy bootstrapem po promptach.
+4. Seedy są te same dla każdego `w`, więc stosujemy test parowy: różnica CCDS(p, `w`) − CCDS(p, 1) dla każdego promptu, test Wilcoxona z poprawką Holma.
+5. **Sprawdzenie odporności:** trend musi być taki sam dla obu ekstraktorów.
+6. **Uwaga interpretacyjna:** wysoka różnorodność przy niskim `w` może oznaczać, że model ignoruje prompt (obserwacja z 2505.08175). Dlatego CCDS pokazujemy zawsze razem z CLAP (wykres F2).
+
+**Zgodność z promptem i jakość:** CLAP_norm, FD_openl3, KL_passt dla każdego `w`. Definicje, zbiory odniesienia i uzasadnienie są w §6.
+
+**Kryterium „zalecanej skali”** (zdefiniowane przed eksperymentem, zamiast ogólnego „szukania optymalnych parametrów”):
+- **Skala automatyczna `w*_auto`:** najmniejsza `w`, dla której CLAP_norm mieści się w 95% CI swojego maksimum po wszystkich `w`, a FD nie jest istotnie gorsze niż przy najlepszym `w`. Przy tej skali raportujemy, ile różnorodności (CCDS) traci się względem `w = 1`.
+- **Skala ludzka `w*_ludzie`:** argmax wyniku Bradleya–Terry'ego ze słuchaczy (E4).
+- Zalecenie końcowe podajemy osobno dla każdego modelu i domeny i wskazujemy, czy obie skale się zgadzają.
+
+**Tabela T1** (dla każdego modelu i domeny):
+
+| `w` | CCDS (CLAP) ± CI | CCDS (PANNs/MERT) ± CI | CLAP_norm ± CI | FD_openl3 ± CI | KL_passt ± CI |
+|---|---|---|---|---|---|
+| 1 … 9 | | | | | |
+
+### 5.2 E2 — Kopiowanie danych treningowych (PB2)
+
+**Z czym porównujemy i skąd wiemy, że to dane treningowe.** Stability AI opublikowała razem z SAO **listy atrybucji** nagrań użytych w treningu: identyfikatory Freesound i utwory FMA. W M1 weryfikujemy dostępność plików w repozytorium modelu na Hugging Face. Z tych list pobieramy nagrania, które są nadal publicznie dostępne. To jest **zbiór treningowy T**: wiemy z listy, że każde z nich było w treningu. Zakładamy podzbiór kilkudziesięciu tysięcy klipów, dobrany do kategorii promptów. Dokładny rozmiar zależy od tego, ile da się pobrać.
+
+**Kontrola: nagrania spoza treningu (zbiór H).** Nagrania z Freesound i FMA, których **nie ma** na listach atrybucji, w szczególności dodane po dacie zebrania danych SAO. Dobieramy je tak, żeby miały ten sam rozkład kategorii i długości co T. Przy kopiowaniu znaczenie ma pytanie, czy generacja jest bliżej treningu, niż przypadkiem byłoby nowe nagranie tego samego typu. Zbiór H daje właśnie ten poziom odniesienia.
+
+**Jak odróżniamy kopię od podobnego rodzaju dźwięku (dwa etapy):**
+
+1. **Wyszukiwanie kandydatów (podobieństwo semantyczne).** Dla każdej generacji szukamy najbliższego sąsiada w T po embeddingu (CLAP, PANNs; indeks FAISS) i zapisujemy podobieństwo `s_gen`. To samo liczymy dla każdego nagrania z H: jego najbliższy sąsiad w T daje `s_held`. **Kandydat** = generacja z `s_gen` powyżej 99. percentyla rozkładu `s_held`. Etap 1 nie wystarcza: dwa różne nagrania deszczu mają podobne embeddingi.
+2. **Weryfikacja kopii (podobieństwo sygnałowe).** Dla każdej pary (kandydat, sąsiad z T) liczymy **maksimum znormalizowanej korelacji wzajemnej log-mel spektrogramów** po przesunięciach w czasie, a dla muzyki dodatkowo dopasowanie chromy i fingerprint (Chromaprint). Próg weryfikacji ustalamy na parach z H (nowe nagranie vs najbliższe nagranie z T, czyli „ten sam typ, inne nagranie”) jako 99,9. percentyl. **Kopia potwierdzona** = przekroczenie tego progu, czyli fragment tego samego nagrania, a nie ten sam rodzaj dźwięku. Najwyżej ocenione przypadki dodatkowo odsłuchujemy w zespole.
+
+Wynik dla każdego `w`: odsetek kandydatów i odsetek potwierdzonych kopii, z CI (bootstrap po promptach). Do tego test, czy odsetek rośnie z `w` (regresja logistyczna: kopia ~ `w`, efekty losowe promptu).
+
+**Jakie wnioski będą możliwe przy ograniczonym dostępie.**
+- Część nagrań z list nie jest już dostępna, więc T jest *podzbiorem* treningu. Wykryty odsetek kopii jest więc **ograniczeniem dolnym**: kopia nagrania spoza naszego podzbioru T nie zostanie wykryta.
+- **Trend** odsetka w funkcji `w` jest jednak wiarygodny, bo ten sam podzbiór T dotyczy wszystkich skal. Główny wniosek E2 dotyczy więc *zmiany z `w`*, a nie bezwzględnej częstości.
+- Dla AudioLDM2 część danych (AudioSet/WavCaps) jest niedostępna, a część z YouTube trudna do pobrania. E2 wykonujemy więc **tylko dla SAO**. Dla AudioLDM2 najwyżej w trybie eksploracyjnym na AudioCaps-train, z wyraźnym zastrzeżeniem.
+
+**Wykres F4** i **Tabela T2:**
+
+| `w` | N generacji | kandydaci (%) ± CI | potwierdzone kopie (%) ± CI | mediana `s_gen` | mediana `s_held` |
+|---|---|---|---|---|---|
+
+### 5.3 E3 — Wyuczony null embedding (PB3)
+
+**Co jest uczone.** Jeden tensor `n ∈ R^{L×d}` o kształcie sekwencji warunkowania cross-attention SAO (tokeny T5 i tokeny czasu trwania; dokładne `L` i `d` odczytamy z konfiguracji modelu w M1). Ten tensor zastępuje zerowy null w gałęzi bezwarunkowej CFG. **Wszystkie wagi SAO są zamrożone**: zmienia się wyłącznie reprezentacja „braku warunku”.
+
+**Na jakich danych.** Nagrania z list atrybucji treningu SAO (z §5.2), rozłączne z nagraniami użytymi później jako sąsiedzi w E2. Zakładamy około 5000 klipów po 10 s, zakodowanych wcześniej do latentów VAE. 10% odkładamy jako zbiór walidacyjny.
+
+**Funkcja celu.** Null ma reprezentować rozkład bezwarunkowy `p(x)`. Minimalizujemy więc standardową stratę dyfuzyjną modelu (v-prediction) **przy warunku równym `n`**:
+
+```
+L(n) = E_{x ~ dane, t, ε} ‖ v_θ(x_t, t, n) − v_target(x, t, ε) ‖²
+```
+
+Gradient płynie tylko do `n` (AdamW, inicjalizacja zerami, czyli od nulla domyślnego, oraz wariant z N(0, 1) jak w 2609.25411). Wybór checkpointu: najniższa strata walidacyjna. To adaptacja pracy 2609.25411, gdzie null uczy się razem z całym modelem przy losowym (p = 0,1) pomijaniu warunku. W naszym przypadku model jest zamrożony. W raporcie opisujemy to jako świadome odstępstwo.
+
+**Sprawdzenie, czy uczenie zadziałało (przed sweepem):**
+- strata walidacyjna z `n` vs strata z nullem zerowym (musi być niższa);
+- generacje **bezwarunkowe** (tylko gałąź null) z obu nulli: FD_openl3 względem zbioru walidacyjnego. Wyuczony null powinien dawać bardziej realistyczne próbki bezwarunkowe.
+
+**Porównanie z nullem domyślnym.** Pełny sweep E1 dla SAO (te same prompty, seedy, skale, sampler) z wyuczonym nullem i te same metryki (CCDS, CLAP_norm, FD, KL, odsetek kopii z E2). Seedy są wspólne, więc dla każdej pary (prompt, seed, `w`) liczymy różnicę parową. **Tabela T3:** Δ = wyuczony − domyślny dla każdego `w` i każdej metryki, z parowym bootstrapowym CI. **Wykres F5:** nałożone krzywe. H3 potwierdza się, jeśli Δ FD < 0 istotnie przy `w ≥ 7`.
+
+**Kontrole tanie (opcjonalne):** null = embedding pustego napisu T5 oraz średnia embeddingów opisów. Te warianty pokazują, ile daje samo przesunięcie nulla bez uczenia.
+
+### 5.4 E4 — Sędzia automatyczny vs słuchacze (PB4)
+
+**Sędzia automatyczny.** Qwen2-Audio-7B-Instruct, otwarte wagi, stała wersja (skwantyzowany, jeśli wymaga tego VRAM). Oceny drugiego, wyuczonego oceniacza (Audiobox Aesthetics) raportujemy obok, żeby wynik nie zależał od jednego sędziego.
+
+**Jak ustalamy, którą skalę preferuje sędzia.**
+- Porównania **parami**: ten sam prompt i ten sam seed, dwie różne skale. Pytanie do sędziego jest identyczne jak pytanie do słuchaczy (poniżej). Szablon jest zapisany w repo.
+- Każdą parę pokazujemy **w obu kolejnościach** (A/B i B/A). Raportujemy odsetek zmian decyzji po zamianie kolejności jako miarę stronniczości pozycyjnej. Decyzja niespójna między kolejnościami liczy się jako remis.
+- Z wszystkich porównań dopasowujemy **model Bradleya–Terry'ego** z parametrem siły dla każdej skali. **Skala preferowana przez sędziego** = argmax siły, z CI z bootstrapu po promptach.
+- Sędzia ocenia pełny zbiór E1 (wszystkie 10 par skal dla każdego promptu i jednego seeda) oraz osobno **dokładnie te same pary co słuchacze**.
+
+**Dobór próbek do testu odsłuchowego.**
+- **24 prompty** (12 SFX + 12 muzyka), losowanie warstwowe z 200 promptów E1 według tercyli CLAP przy `w = 7`, tak żeby objąć prompty łatwe i trudne.
+- Dla każdego promptu jeden losowy seed i 5 skal, czyli **10 par** (wszystkie kombinacje): łącznie 240 par.
+- **12 słuchaczy**. Każdy ocenia 60 par (zrównoważony plan niekompletny), więc każda para ma 3 oceny. Kolejność par i pozycja A/B są losowe. Około 25–30 minut na osobę, słuchawki, wszystkie klipy znormalizowane do −23 LUFS.
+- 4 pary kontrolne (ten sam klip jako A i B) sprawdzają uważność słuchacza.
+
+**Pytania do słuchaczy** (dla każdej pary, wybór A / B / bez różnicy):
+1. „Które nagranie lepiej odpowiada opisowi?” *(zgodność z promptem)*
+2. „Które nagranie brzmi bardziej naturalnie, jak prawdziwe nagranie?” *(realizm / jakość)*
+3. „Które nagranie ogólnie wolisz?” *(preferencja ogólna; na jej podstawie wyznaczamy preferowaną skalę)*
+
+Sędzia dostaje te same trzy pytania. Dzięki temu porównanie dotyczy tego samego zadania, a nie ocen realizmu zebranych w oderwaniu od skal.
+
+**Porównanie ocen słuchaczy i sędziego.**
+- **Preferowana skala:** argmax Bradleya–Terry'ego dla słuchaczy vs dla sędziego, na tych samych 240 parach. Raportujemy **różnicę preferowanych skal z 95% CI** (bootstrap po promptach i słuchaczach). H4 potwierdza się, jeśli CI różnicy (sędzia − słuchacze) leży powyżej 0.
+- **Zgodność decyzji parami:** odsetek par, w których sędzia wybiera to samo co większość słuchaczy, oraz współczynnik kappa Cohena.
+- **Pułap odniesienia:** zgodność między samymi słuchaczami (każdy słuchacz vs większość pozostałych). Zgodność sędziego oceniamy na tle tej wartości.
+- Osobno dla trzech pytań i dla dwóch domen.
+
+**Zgoda etyczna.** Zgodnie z kartą test wymaga zgody komisji etycznej przed zebraniem danych. Wniosek składamy w listopadzie, a test jest zaplanowany na styczeń.
+
+**Tabela T4:**
+
+| | preferowana skala (BT) ± CI | zgodność z większością słuchaczy | kappa | flip rate (A/B) |
+|---|---|---|---|---|
+| słuchacze | | (pułap: zgodność między słuchaczami) | | — |
+| Qwen2-Audio | | | | |
+| Audiobox Aesthetics | | | | — |
+
+---
+
+## 6. Uzasadnienie miar
+
+### 6.1 CLAP: zgodność z promptem, bez progów jakościowych
+
+Pierwsza wersja podawała progi („> 0,4 bardzo dobrze”, „< 0,15 bardzo źle”) bez źródła. **Usuwamy je.** Wartości bezwzględne CLAP zależą od checkpointu i domeny. Dla tego samego modelu SAO literatura podaje CLAP ≈ 0,29 na AudioCaps (2505.08175) i ≈ 0,41 na muzyce z Song Describer (2603.04366), więc jeden próg nie może znaczyć „dobrze” w obu domenach.
+
+Zamiast progów stosujemy **kalibrację na prawdziwych nagraniach** z tych samych zbiorów:
+- **pułap** `C_real` = średni CLAP prawdziwego nagrania z jego własnym opisem;
+- **podłoga** `C_mis` = średni CLAP prawdziwego nagrania z losowym, niepasującym opisem z tej samej domeny;
+- **CLAP_norm** = (CLAP_gen − C_mis) / (C_real − C_mis). Wartość 0 oznacza „nie lepiej niż losowy opis”, a 1 oznacza „tak zgodne z opisem jak prawdziwe nagranie”.
+
+Liczymy to dla LAION-CLAP oraz, jako sprawdzenie, dla MS-CLAP: wnioski o trendzie muszą się zgadzać dla obu modeli CLAP. Porównujemy CLAP_norm **między skalami w obrębie modelu i domeny**.
+
+### 6.2 FD (Fréchet Distance): realizm rozkładu
+
+- **Co mierzy:** odległość między rozkładem embeddingów generacji a rozkładem embeddingów prawdziwych nagrań. FD nie ocenia pojedynczych klipów, tylko cały zbiór.
+- **Embedding:** OpenL3 (FD_openl3, jak w pracach o SAO, więc wyniki są porównywalne z literaturą), a pomocniczo VGGish (klasyczne FAD, biblioteka `frechet-audio-distance`).
+- **Zbiory odniesienia:** SFX = nagrania ze zbioru testowego AudioCaps, z których pochodzą prompty, plus dalsze nagrania z AudioCaps-test; muzyka = nagrania z niewokalnego podzbioru Song Describer. Odniesienie jest **to samo dla wszystkich ustawień** danego modelu i domeny.
+- **Porównywanie ustawień:** FD jest obciążone liczebnością próby, więc każde ustawienie (model, domena, `w`, null) ma **identyczne N = 1000** klipów (100 promptów × 10 seedów). CI liczymy bootstrapem po promptach. Różnicę między dwoma ustawieniami uznajemy za istotną, gdy CI różnicy nie zawiera 0.
+- **Poziom odniesienia:** FD między dwiema rozłącznymi połówkami prawdziwego zbioru odniesienia, czyli najlepszy osiągalny wynik.
+- **KL_passt** (rozbieżność rozkładów etykiet klasyfikatora PaSST między generacją a jej prawdziwym odpowiednikiem) uzupełnia FD na poziomie pojedynczego promptu.
+
+### 6.3 Różnorodność i kopie
+
+Uzasadnienie jest w §5.1 (CCDS liczony z odległości między generacjami, zgodny z ocenami słuchaczy w 2505.08175) i w §5.2 (próg z rozkładu kontrolnego zamiast arbitralnego).
+
+### 6.4 Statystyka wspólna
+
+- 95% CI z bootstrapu po promptach (oraz po słuchaczach w E4), 10 000 powtórzeń.
+- Porównania między skalami są parowe (wspólne seedy), z poprawką Holma na liczbę metryk.
+- „Zmienia się z `w`” = CI dla `w = 1` i dla skali o skrajnej wartości nie nakładają się. To operacyjna postać kryterium obalenia z §2.
+
+---
+
+## 7. Moc obliczeniowa
+
+- SAO przy 100 krokach i CFG generuje 47 s audio w 11,3 s na H100 i zajmuje około 5,5 GB VRAM (2603.04366), więc mieści się na konsumenckim GPU. Rzeczywisty czas dla 10-sekundowego klipu na naszej karcie mierzymy w M1. Roboczo zakładamy 5–10 s na klip.
+- E1 + E3 to około 30 000 klipów, czyli roboczo **2–3 doby pracy GPU**. Uczenie nulla to kilka godzin, bo uczymy tylko jeden tensor. Embeddingi, FD, wyszukiwanie kopii i sędzia dokładają około 1–2 doby.
+- Jeśli czas okaże się za długi: 50 kroków samplera (jednakowo dla wszystkich ustawień) albo 5 zamiast 10 seedów w E3 przy `w ∈ {3, 5}`.
+
+---
+
+## 8. Architektura i narzędzie pomocnicze
+
+```
+data/prompts.csv ─► src/generate/ (SAO, AudioLDM2; parametry: w, null, seed) ─► outputs/clips + meta.parquet
+                                                    │
+src/null_embedding/ (E3: uczenie tensora null) ─────┘
+                                                    ▼
+src/metrics/  ─ ccds, clap_norm, fd_openl3, kl_passt (E1)
+              ─ copy_search (FAISS), copy_verify (korelacja log-mel, chroma) (E2)
+              ─ judge (Qwen2-Audio, pary w obu kolejnościach) (E4)
+                                                    ▼
+src/analysis/ ─ bootstrap, Bradley–Terry, testy parowe ─► results/ (T1–T4), figures/ (F1–F6)
+
+app/ (Gradio, pomocniczo): podgląd generacji dla zadanego w i nulla · interfejs testu odsłuchowego
+```
+
+Generowanie jest wznawialne: ścieżka każdego klipu koduje jego ustawienia, więc przerwany przebieg nie generuje gotowych klipów ponownie.
+
+**Stos:** Python, PyTorch, `stable-audio-tools`, `diffusers`, `transformers` (Qwen2-Audio), `laion-clap`, `msclap`, `stable-audio-metrics` / `frechet-audio-distance`, `faiss`, `librosa`, `pandas`, `matplotlib`, Gradio.
+
+---
+
+## 9. Harmonogram
+
+| Etap | Termin | Zakres | Wynik |
 |---|---|---|---|
-| **M0** Design | 14.10 – **21.10** | Ten dokument; lektura 4 prac z `articles/`; zamrożenie listy promptów; **zapisanie w repo kryterium obalenia** | Design proposal oddany |
-| **M1** Prototyp | 22.10 – **04.11** | Środowisko; wrapper SAO z hookiem CFG + null; dashboard Gradio (zakładka „Generowanie”: prompt, suwak CFG, wybór nulla, seed, N); **mini-pilotaż**: 20 promptów × 10 seedów × `w ∈ {1,3,5,7,9}` = 1000 klipów, CCDS + CLAP; odtworzenie wartości SAO z literatury; **złożenie wniosku etycznego** | Zgłoszenie gotowości prototypu 04.11; spotkanie do 10.11 |
-| **M2** Pilotaż pełny | 05.11 – 24.11 | Pierwsze kroki z karty: SAO, 200 promptów × 10 seedów × 5 skal; pipeline FD_openl3 / KL_passt / CLAP / R,C_passt; pipeline copy rate z rozkładem held-out; preferowana skala jednego sędziego | Pierwsze krzywe z przedziałami; **decyzja: kontynuujemy / nie** (kryterium obalenia) |
-| **M3** Drugi model + nulle | 26.11 – 16.12 | Przemiatanie AudioLDM2; SAO Small jako punkt bez CFG; bazowe nulle; trening wyuczonego nulla (wariant post-hoc, potem LoRA, jeśli pozwoli czas) | Wszystkie krzywe PB1; wyuczony null gotowy; **standup 1** |
-| **M4** Nulle + sędzia | 17.12 – 10.01 | Przemiatanie SAO z wyuczonym nullem; ocena sędziego punktowa i parami z zamianą kolejności; model Bradleya–Terry'ego; przygotowanie próbki do testu odsłuchowego (przerwa świąteczna: długie przebiegi GPU w tle) | Krzywe PB2; preferowana skala sędziego; **standup 2** |
-| **M5** Test odsłuchowy | 04.01 – 12.01 | 12 słuchaczy przez zakładkę Gradio (po uzyskaniu zgody etycznej) | Preferowana skala słuchaczy; luka sędzia–słuchacz |
-| **M6** Raport | 11.01 – **15.01** | Krzywe, zalecenia per zastosowanie, luka; zakładka „Wyniki” w dashboardzie | Raport i odtwarzalne repo na **termin zwolnienia 15.01** |
-| **M7** Bufor i demo | 16.01 – 27.01 | Poprawki po uwagach; ewentualnie rozdzielony CFG (4.5); przygotowanie demo | Deadline finalny 22.01; **demo 27.01** |
+| **M0** Design v2 | do 28.10 | Ta wersja; lista promptów zapisana w repo; kryterium obalenia zapisane | dokument |
+| **M1** Prototyp | 29.10 – **04.11** | Wrapper SAO z parametrami `w`, null, seed; potwierdzenie postaci nulla w kodzie; weryfikacja list atrybucji; **mini-pilotaż E1**: 20 promptów × 10 seedów × 5 skal → pierwszy wykres CCDS i CLAP_norm vs `w`; podgląd w Gradio | zgłoszenie prototypu 04.11, spotkanie do 10.11 |
+| **M2** E1 dla SAO | 05.11 – 24.11 | Pełny sweep SAO; kalibracja CLAP; FD/KL; **decyzja wg kryterium obalenia**; wniosek do komisji etycznej | T1 i F1–F3 dla SAO |
+| **M3** E1 dla AudioLDM2 + E2 | 26.11 – 16.12 | Sweep AudioLDM2; pobranie T i H; wyszukiwanie i weryfikacja kopii | T1 dla obu modeli, T2, F4; standup 1 |
+| **M4** E3 + sędzia | 17.12 – 10.01 | Uczenie nulla, sprawdzenie, sweep SAO z wyuczonym nullem; sędzia na pełnym zbiorze | T3, F5, część T4; standup 2 |
+| **M5** Test odsłuchowy | 04.01 – 12.01 | 12 słuchaczy (po uzyskaniu zgody etycznej); sędzia na tych samych parach | T4, F6 |
+| **M6** Raport | do **15.01** | Odpowiedzi na PB1–PB4, zalecane skale | raport (termin zwolnienia) |
+| **M7** Bufor | do 22.01; demo 27.01 | Poprawki, demo | — |
 
 ---
 
-## 7. Szacunek kosztów obliczeniowych
+## 10. Ryzyka
 
-- Punkt odniesienia z literatury: SAO przy 100 krokach i CFG 7 generuje 47 s audio w **11,3 s na H100** i zajmuje **5,5 GB VRAM** (2603.04366, tab. 1). Model mieści się więc na konsumenckim GPU, a czas na klip zależy od karty.
-- Przy klipach 10 s i konsumenckim GPU zakładamy roboczo około 5–10 s na klip (z CFG, czyli dwoma przejściami w przód na krok). Dokładną wartość mierzymy w M1. Przy 5 s na klip 10 000 klipów zajmuje około **14 h** na konfigurację.
-- Około 6 konfiguracji (SAO × 4 nulle + AudioLDM2 × 1, plus dodatkowe skale) to około **3–4 dni pracy GPU** na samo generowanie. Embeddingi, FD/KL i sędzia dokładają około 1–2 dni. Wariant LoRA (4.5) jest opcjonalny i dochodzi do tego tylko, jeśli zmieści się w czasie.
-- Środki zaradcze: dla dodatkowych nulli pełne 10 seedów tylko przy `w ∈ {1,5,9}`, a mniej seedów przy pozostałych skalach. Nocne zadania wsadowe z możliwością wznowienia. Najdłuższe przebiegi planujemy na przerwę świąteczną.
-
----
-
-## 8. Ryzyka i środki zaradcze
-
-| Ryzyko | Środek zaradczy |
+| Ryzyko | Postępowanie |
 |---|---|
-| Dane treningowe tylko częściowo publiczne, więc copy rate jest niedoszacowany | Raportujemy copy rate jako **ograniczenie dolne** i podajemy, którą część korpusu sprawdzono (rozwiązanie zaproponowane w karcie) |
-| Obliczenia przekraczają możliwości jednego GPU | Klipy 10 s, mniej seedów dla dodatkowych nulli, decyzja po pilotażu |
-| Wyuczony null post-hoc nie zbiega się lub daje to samo co null zerowy | To nadal wynik (negatywna odpowiedź na PB2). Wariant LoRA jest bliższy pracy źródłowej. Warianty bez treningu zachowują sens porównania |
-| Efekt wyuczonego nulla myli się z efektem samego fine-tuningu | Kontrola: fine-tuning z nullem zerowym przy identycznych krokach (4.5) |
-| Sędzia ma skłonność do wybierania pozycji lub sugeruje się promptem | Obie kolejności dla każdej pary; drugi sędzia; raportujemy odsetek zmian decyzji (flip rate) |
-| Wysoka różnorodność przy niskim `w` wynika z ignorowania promptu | Różnorodność raportujemy zawsze razem z CLAP (4.2) |
-| Wybór embeddingu decyduje o wyniku różnorodności / kopii | Dwa ekstraktory embeddingów na domenę; trendy muszą być zgodne |
-| Opóźniona zgoda komisji etycznej | Wniosek do 04.11; test odsłuchowy dopiero w styczniu |
-| Kumulacja terminów w styczniu (kolokwium 2, zwolnienie, deadline) | Cel: wyniki na 15.01; okres 16.01–22.01 to tylko bufor |
-| Bezwzględne wartości CLAP / FD nie są porównywalne między modelami | Porównujemy **w obrębie** modelu między skalami; raportujemy zmiany względne |
+| Część nagrań z list atrybucji niedostępna | Odsetek kopii jako ograniczenie dolne; główny wniosek dotyczy trendu z `w` (§5.2) |
+| Wyuczony null nie obniża straty względem zerowego | Negatywna odpowiedź na PB3 jest wynikiem; raportujemy krzywą straty |
+| Model zamrożony ogranicza efekt nulla (inaczej niż w 2609.25411) | Opisujemy jako odstępstwo; jeśli zostanie czas, krótki fine-tuning LoRA razem z nullem, z kontrolą „LoRA + null zerowy” |
+| Sędzia stronniczy pozycyjnie | Obie kolejności, raport flip rate, drugi sędzia |
+| Opóźniona zgoda etyczna | Wniosek w listopadzie; E1–E3 nie zależą od testu odsłuchowego |
+| Za mało czasu GPU | Mniej kroków lub seedów, jednakowo dla porównywanych ustawień (§7) |
 
 ---
 
-## 9. Oczekiwane wyniki („result either way”, z karty)
+## 11. Literatura
 
-- **Krzywe spadają i rosną zgodnie z oczekiwaniami:** pierwszy zmierzony kompromis guidance dla audio oraz zalecane `w` dla każdego zastosowania (muzyka vs. efekty dźwiękowe).
-- **Płaskie krzywe:** guidance w audio jest tańsze, niż sugeruje literatura obrazowa. To również cenna informacja dla twórców modeli.
-- **Luka sędzia–słuchacz:** automatyczne strojenie skali daje za wysoką wartość, więc `w` nie powinno być dobierane wyłącznie przez sędziego audio-językowego.
+Prace z karty (PDF w `articles/`):
+1. *Learnable Classifier-Free Guidance Null Embeddings for Enhanced Controllable Speech Synthesis*, arXiv:2609.25411. Wyuczony null, plateau jakości przy dużym `w`, konwencja skali (E3).
+2. *Low-Resource Guidance for Controllable Latent Audio Diffusion*, arXiv:2603.04366. Szczegóły i koszt SAO, dane FMA, metryki FD_openl3 / KL_passt / CLAP, Song Describer.
+3. *Fast Text-to-Audio Generation with Adversarial Post-Training*, arXiv:2505.08175. Metryka CCDS, wartości bazowe SAO, związek różnorodności z ignorowaniem promptu (E1).
+4. *DITTO: Diffusion Inference-Time T-Optimization for Music Generation*, arXiv:2401.12179. Rola szumu początkowego, czyli uzasadnienie wspólnych seedów.
 
----
+Uzupełniające: Ho i Salimans, *Classifier-Free Diffusion Guidance* (arXiv:2207.12598); Evans i in., *Stable Audio Open* (arXiv:2407.14358); Kilgour i in., *Fréchet Audio Distance* (arXiv:1812.08466); Wu i in., *LAION-CLAP* (arXiv:2211.06687).
 
-## 10. Literatura i wnioski dla projektu
-
-### 10.1 Prace z karty (PDF w `articles/`)
-
-| Praca | Co z niej bierzemy |
-|---|---|
-| **Learnable CFG Null Embeddings for Enhanced Controllable Speech Synthesis**, arXiv:2609.25411 | Główna inspiracja PB2: wyuczony null (dropout warunku 0,1, inicjalizacja N(0, 1), jeden null na typ warunku); hipoteza plateau jakości przy dużym `w`; rozdzielony CFG dla wielu warunków (rozszerzenie dla tekstu i czasu trwania w SAO); test CMOS jako wariant testu odsłuchowego; uwaga o innej konwencji skali `w` |
-| **Low-Resource Guidance for Controllable Latent Audio Diffusion**, arXiv:2603.04366 | Szczegóły SAO (latent 64 × 21,5 Hz, 100 kroków DDIM, CFG 7, forma variance-preserving); koszt SAO (11,3 s, 5,5 GB na H100); dane FMA CC użyte do treningu SAO (do sprawdzania kopii); metryki FD_openl3 / KL_passt / CLAP; niewokalny Song Describer jako zbiór promptów muzycznych; MOS 1–5 dla jakości i zgodności z promptem |
-| **Fast Text-to-Audio Generation with Adversarial Post-Training (ARC)**, arXiv:2505.08175 | Metryka **CCDS** (różnorodność w obrębie promptu) i R/C_passt; wartości bazowe SAO na AudioCaps (punkt kontrolny odtworzenia); obserwacja, że wysoka różnorodność może oznaczać ignorowanie promptu; webMUSHRA z osiami różnorodność / jakość / zgodność; SAO Small jako model bez CFG |
-| **DITTO: Diffusion Inference-Time T-Optimization for Music Generation**, arXiv:2401.12179 | Szum początkowy `x_T` silnie wyznacza wynik, co uzasadnia te same seedy dla wszystkich skal i osobne raportowanie samplera deterministycznego / stochastycznego; CFG wymaga 2× aktywacji, co ma znaczenie dla budżetu VRAM |
-
-### 10.2 Literatura uzupełniająca
-
-Ho i Salimans, *Classifier-Free Diffusion Guidance* (arXiv:2207.12598); Evans i in., *Stable Audio Open* (arXiv:2407.14358); Kilgour i in., *Fréchet Audio Distance* (arXiv:1812.08466); Wu i in., *LAION-CLAP* (arXiv:2211.06687); Chung i in., *CFG++: Manifold-constrained classifier free guidance* (arXiv:2406.08070, cytowane w ARC jako źródło obserwacji o różnorodności i przesyceniu).
-
-### Zasady projektu (z handoutu)
-
-- Każda liczba w raporcie pochodzi z pliku wytworzonego przez zespół.
-- Każda cytowana praca została przeczytana przez członka zespołu.
-- Prompty i sesje agentów, które wytworzyły kod, są przechowywane w repozytorium (`agent_logs/`).
+**Zasady z handoutu:** każda liczba w raporcie pochodzi z pliku wytworzonego przez zespół; każdą cytowaną pracę przeczytał członek zespołu; prompty i sesje agentów są w `agent_logs/`.
