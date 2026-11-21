@@ -9,7 +9,8 @@
   "enable_internet": true,
   "dataset_sources": [
     "brunosette/fma-large",
-    "chibuzokelechi/song-describer-dataset"
+    "chibuzokelechi/song-describer-dataset",
+    "dharmeshjoshi0/stable-audio-open-1-0"
   ],
   "competition_sources": [],
   "kernel_sources": []
