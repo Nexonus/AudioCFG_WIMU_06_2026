@@ -32,3 +32,12 @@ class StageConfig(BaseModel):
 
     def run_dir(self) -> Path:
         return Path(self.output_dir) / f"{self.name}-{self.config_hash()[:12]}"
+
+
+class DataConfig(StageConfig):
+    sao_fma_tracks: Path
+    song_describer_csv: Path
+    clotho_captions_csv: Path
+    prompts_per_domain: int = 48
+    null_train_tracks: int = 2000
+    null_val_tracks: int = 300

@@ -110,15 +110,14 @@ class StableAudio:
         timing_tokens, global_states = self.encode_timing(len(prompts), seconds_start, seconds_end)
         return torch.cat([text, timing_tokens], dim=1), global_states
 
-    def initial_noise(self, seeds: Sequence[int]) -> torch.Tensor:
+    def initial_noise(self, generators: list[torch.Generator]) -> torch.Tensor:
         from diffusers.utils.torch_utils import randn_tensor
 
         shape = (
-            len(seeds),
+            len(generators),
             self.transformer.config.in_channels,
-            self.transformer.config.sample_size,
+            int(self.transformer.config.sample_size),
         )
-        generators = [torch.Generator("cpu").manual_seed(int(s)) for s in seeds]
         return randn_tensor(shape, generator=generators, device=self.device, dtype=self.dtype)
 
     def rotary(self, latent_len: int, global_len: int):
@@ -171,7 +170,8 @@ class StableAudio:
             encoder_states = cond_states
 
         self.scheduler.set_timesteps(num_steps, device=self.device)
-        latents = self.initial_noise(seeds) * self.scheduler.init_noise_sigma
+        generators = [torch.Generator("cpu").manual_seed(int(s)) for s in seeds]
+        latents = self.initial_noise(generators) * self.scheduler.init_noise_sigma
         rotary = self.rotary(latents.shape[2], global_states.shape[1])
         scale = scale.to(self.device)
         norms = []
@@ -184,7 +184,7 @@ class StableAudio:
                 uncond, cond = out.chunk(2)
                 norms.append(guidance_rms(uncond, cond))
                 out = combine_cfg(uncond, cond, scale)
-            latents = self.scheduler.step(out, t, latents).prev_sample
+            latents = self.scheduler.step(out, t, latents, generator=generators).prev_sample
 
         audio = latents
         if decode:
@@ -205,7 +205,7 @@ def resolve_dtype(dtype: str) -> torch.dtype:
     if not torch.cuda.is_available():
         return torch.float32
     name = torch.cuda.get_device_name(0)
-    
+
     if "GTX 16" in name:
         return torch.float32
     return torch.float16

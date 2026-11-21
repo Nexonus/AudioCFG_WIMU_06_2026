@@ -65,5 +65,8 @@ def test_zero_null_equals_stock_pipeline():
     zeros = sao.sample(
         [prompt], [seed], g, null_text=torch.zeros(sao.text_shape), num_steps=steps, seconds=seconds
     )
+    again = sao.sample([prompt], [seed], g, null_text=None, num_steps=steps, seconds=seconds)
     assert torch.equal(ours.latents, stock)
     assert torch.equal(zeros.latents, stock)
+    assert torch.equal(again.latents, ours.latents)
+    assert ours.guidance_rms.shape == (1, steps)

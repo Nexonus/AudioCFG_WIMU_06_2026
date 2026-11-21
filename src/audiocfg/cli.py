@@ -49,5 +49,45 @@ def generate(
     typer.echo(f"{out}  ({elapsed:.1f} s, dtype={sao.dtype}, device={sao.device})")
 
 
+@app.command("prepare-data")
+def prepare_data(config: Path = Path("configs/data.yaml")) -> None:
+    import pandas as pd
+
+    from audiocfg.data.fma_subset import split_by_artist
+    from audiocfg.data.prompts import eval_prompts
+    from audiocfg.repro.config import DataConfig
+    from audiocfg.repro.manifest import build_manifest, write_manifest
+
+    cfg = DataConfig.from_yaml(config)
+    out_dir = Path(cfg.output_dir)
+    prompts = eval_prompts(
+        pd.read_csv(cfg.song_describer_csv),
+        pd.read_csv(cfg.clotho_captions_csv),
+        cfg.prompts_per_domain,
+        cfg.master_seed,
+    )
+    tracks = split_by_artist(
+        pd.read_csv(cfg.sao_fma_tracks, encoding="utf-8-sig"),
+        cfg.null_train_tracks,
+        cfg.null_val_tracks,
+        cfg.master_seed,
+    )
+    prompts_path, tracks_path = out_dir / "eval_prompts.csv", out_dir / "null_tracks.csv"
+    prompts.to_csv(prompts_path, index=False, lineterminator="\n")
+    tracks.to_csv(tracks_path, index=False, lineterminator="\n")
+    manifest = build_manifest(
+        cfg,
+        inputs={
+            "sao_fma_tracks": cfg.sao_fma_tracks,
+            "song_describer_csv": cfg.song_describer_csv,
+            "clotho_captions_csv": cfg.clotho_captions_csv,
+        },
+        outputs={"eval_prompts": prompts_path, "null_tracks": tracks_path},
+    )
+    write_manifest(out_dir / "data_manifest.json", manifest)
+    typer.echo(prompts.groupby("domain").size().to_string())
+    typer.echo(tracks.groupby("split").agg(tracks=("id", "size"), artists=("author", "nunique")))
+
+
 if __name__ == "__main__":
     app()

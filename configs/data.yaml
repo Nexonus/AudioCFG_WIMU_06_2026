@@ -1,0 +1,11 @@
+name: data
+master_seed: 2026
+output_dir: data
+
+sao_fma_tracks: data/sao_fma_tracks.csv
+song_describer_csv: data/raw/song_describer/song_describer.csv
+clotho_captions_csv: data/raw/clotho/clotho_captions_evaluation.csv
+
+prompts_per_domain: 48
+null_train_tracks: 2000
+null_val_tracks: 300
