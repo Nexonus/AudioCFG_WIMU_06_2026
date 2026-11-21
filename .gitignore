@@ -218,3 +218,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- AudioCFG ---
+# Large or regenerable artifacts stay out of git (clips are published as a Kaggle Dataset).
+outputs/
+cache/
+data/raw/
+*.wav
+*.flac
+*.mp3
+*.pt
+# Per-clip metrics, loss curves and learned nulls (small) ARE tracked:
+!results/**
+!nulls/**/*.safetensors
