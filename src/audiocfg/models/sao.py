@@ -188,9 +188,12 @@ class StableAudio:
 
         audio = latents
         if decode:
-            audio = self.vae.decode(latents).sample
             start, end = int(seconds_start * self.sample_rate), int(seconds * self.sample_rate)
-            audio = audio[:, :, start:end]
+            # One clip at a time: the VAE decodes the full 47 s window and runs out of memory
+            # on a 16 GB T4 for batches > 4.
+            audio = torch.cat(
+                [self.vae.decode(z.unsqueeze(0)).sample[:, :, start:end] for z in latents]
+            )
         return SampleOutput(
             audio=audio,
             latents=latents,

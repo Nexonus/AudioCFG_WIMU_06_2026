@@ -53,7 +53,7 @@ report["max_seconds"] = sao.max_seconds
 
 prompts = ["rain on a tin roof, distant thunder", "calm solo piano, slow tempo"]
 timings = {}
-for batch in (1, 4, 8):
+for batch in (1, 4, 8, 12):
     ps = (prompts * batch)[:batch]
     seeds = list(range(batch))
     torch.cuda.synchronize()
