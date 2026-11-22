@@ -94,10 +94,27 @@ class StableAudio:
     def encode_text(self, prompts: Sequence[str]) -> torch.Tensor:
         return self.pipe.encode_prompt(list(prompts), self.device, False)
 
+    @property
+    def window_samples(self) -> int:
+        return int(self.transformer.config.sample_size) * int(self.vae.hop_length)
+
+    @torch.no_grad()
+    def encode_audio(self, audio: torch.Tensor, generator: torch.Generator | None = None):
+        """(B, 2, window_samples) waveform -> (B, 64, latent_len) sampled VAE latents."""
+        audio = audio.to(self.device, self.vae.dtype)
+        return self.vae.encode(audio).latent_dist.sample(generator)
+
     @torch.no_grad()
     def encode_timing(
-        self, batch_size: int, seconds_start: float, seconds_end: float
+        self,
+        batch_size: int,
+        seconds_start: float | Sequence[float],
+        seconds_end: float | Sequence[float],
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        seconds_start = (
+            list(seconds_start) if isinstance(seconds_start, Sequence) else seconds_start
+        )
+        seconds_end = list(seconds_end) if isinstance(seconds_end, Sequence) else seconds_end
         start, end = self.pipe.encode_duration(
             seconds_start, seconds_end, self.device, False, batch_size
         )
@@ -136,6 +153,17 @@ class StableAudio:
             t.unsqueeze(0),
             encoder_hidden_states=encoder_states,
             global_hidden_states=global_states,
+            rotary_embedding=rotary,
+            return_dict=False,
+        )[0]
+
+    def v_prediction(self, x_t, t, encoder_states, global_states) -> torch.Tensor:
+        rotary = self.rotary(x_t.shape[2], global_states.shape[1])
+        return self.transformer(
+            x_t.to(self.dtype),
+            t.to(self.device, self.dtype),
+            encoder_hidden_states=encoder_states.to(self.dtype),
+            global_hidden_states=global_states.to(self.dtype),
             rotary_embedding=rotary,
             return_dict=False,
         )[0]

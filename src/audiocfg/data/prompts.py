@@ -42,6 +42,23 @@ def song_describer_prompts(table: pd.DataFrame, n: int, master_seed: int) -> pd.
     )
 
 
+def sanity_tracks(table: pd.DataFrame, exclude_track_ids, n: int, master_seed: int) -> pd.DataFrame:
+    valid = table[(table["is_valid_subset"] == True) & table["caption"].notna()]  # noqa: E712
+    valid = valid[~valid["track_id"].astype(str).isin({str(x) for x in exclude_track_ids})]
+    one_per_track = valid.sort_values("caption_id").groupby("track_id", as_index=False).first()
+    one_per_track = one_per_track.sort_values("track_id").reset_index(drop=True)
+    pick = _rng(master_seed, "sanity").permutation(len(one_per_track))[:n]
+    rows = one_per_track.iloc[pick].reset_index(drop=True)
+    return pd.DataFrame(
+        {
+            "track_id": rows["track_id"].astype(str),
+            "caption": rows["caption"].str.strip(),
+            "wrong_caption": np.roll(rows["caption"].str.strip().to_numpy(), 1),
+            "ref_audio": [p.replace(".mp3", ".2min.mp3") for p in rows["path"]],
+        }
+    )
+
+
 def clotho_prompts(table: pd.DataFrame, n: int, master_seed: int) -> pd.DataFrame:
     files = table.sort_values("file_name").reset_index(drop=True)
     if len(files) < n:

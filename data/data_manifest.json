@@ -11,12 +11,13 @@
     "null_val_tracks": 300,
     "output_dir": "data",
     "prompts_per_domain": 48,
+    "sanity_tracks": 64,
     "sao_fma_tracks": "data\\sao_fma_tracks.csv",
     "song_describer_csv": "data\\raw\\song_describer\\song_describer.csv"
   },
   "config_class": "DataConfig",
-  "config_hash": "a7cb51a104194388fe10b2c7d07ac06d4b82194b30a11611c509d7587d113499",
-  "created_utc": "2026-11-21T16:21:44+00:00",
+  "config_hash": "cee85230a86e6364f46ebb80f499612ee6f1e41c222e8d15baa519e260f4a83a",
+  "created_utc": "2026-11-21T23:48:34+00:00",
   "device": {
     "cuda": true,
     "cuda_version": "12.6",
@@ -27,7 +28,7 @@
   "extra": {},
   "git": {
     "branch": "feat/learned-null",
-    "commit": "8c8ed16b1e601c56e0f95229032a24a3a34db045",
+    "commit": "f152fca314939c4cb0d508b0fc75e5e2044fa98a",
     "dirty": true
   },
   "inputs": {
@@ -52,6 +53,10 @@
     "null_tracks": {
       "path": "data\\null_tracks.csv",
       "sha256": "ee65db3875ac3c66e4ddc5754f4c6ae82d84162badc54fe9a0eef75450791478"
+    },
+    "sanity_tracks": {
+      "path": "data\\sanity_tracks.csv",
+      "sha256": "d1d6d33591b06c18519423b736408df6f48d81912a76d0de8073e8a3677a8510"
     }
   },
   "packages": {

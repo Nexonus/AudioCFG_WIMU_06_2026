@@ -41,3 +41,22 @@ class DataConfig(StageConfig):
     prompts_per_domain: int = 48
     null_train_tracks: int = 2000
     null_val_tracks: int = 300
+    sanity_tracks: int = 64
+
+
+class NullTrainConfig(StageConfig):
+    null_tracks: Path = Path("data/null_tracks.csv")
+    sanity_tracks: Path = Path("data/sanity_tracks.csv")
+    max_seconds: float = 30.0
+    inits: tuple[str, ...] = ("zero",)
+    steps: int = 1500
+    batch_size: int = 8
+    lr: float = 5e-3
+    warmup: int = 100
+    weight_decay: float = 0.0
+    grad_clip: float = 1.0
+    eval_every: int = 250
+    eval_items: int = 64
+    val_draws: int = 4
+    sanity_draws: int = 2
+    eval_batch: int = 8

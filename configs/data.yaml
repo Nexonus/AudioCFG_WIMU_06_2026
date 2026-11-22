@@ -9,3 +9,4 @@ clotho_captions_csv: data/raw/clotho/clotho_captions_evaluation.csv
 prompts_per_domain: 48
 null_train_tracks: 2000
 null_val_tracks: 300
+sanity_tracks: 64

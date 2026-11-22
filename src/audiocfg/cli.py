@@ -54,14 +54,15 @@ def prepare_data(config: Path = Path("configs/data.yaml")) -> None:
     import pandas as pd
 
     from audiocfg.data.fma_subset import split_by_artist
-    from audiocfg.data.prompts import eval_prompts
+    from audiocfg.data.prompts import eval_prompts, sanity_tracks
     from audiocfg.repro.config import DataConfig
     from audiocfg.repro.manifest import build_manifest, write_manifest
 
     cfg = DataConfig.from_yaml(config)
     out_dir = Path(cfg.output_dir)
+    song_describer = pd.read_csv(cfg.song_describer_csv)
     prompts = eval_prompts(
-        pd.read_csv(cfg.song_describer_csv),
+        song_describer,
         pd.read_csv(cfg.clotho_captions_csv),
         cfg.prompts_per_domain,
         cfg.master_seed,
@@ -72,7 +73,15 @@ def prepare_data(config: Path = Path("configs/data.yaml")) -> None:
         cfg.null_val_tracks,
         cfg.master_seed,
     )
+    sanity = sanity_tracks(
+        song_describer,
+        prompts.loc[prompts.domain == "music", "source_id"],
+        cfg.sanity_tracks,
+        cfg.master_seed,
+    )
     prompts_path, tracks_path = out_dir / "eval_prompts.csv", out_dir / "null_tracks.csv"
+    sanity_path = out_dir / "sanity_tracks.csv"
+    sanity.to_csv(sanity_path, index=False, lineterminator="\n")
     prompts.to_csv(prompts_path, index=False, lineterminator="\n")
     tracks.to_csv(tracks_path, index=False, lineterminator="\n")
     manifest = build_manifest(
@@ -82,11 +91,32 @@ def prepare_data(config: Path = Path("configs/data.yaml")) -> None:
             "song_describer_csv": cfg.song_describer_csv,
             "clotho_captions_csv": cfg.clotho_captions_csv,
         },
-        outputs={"eval_prompts": prompts_path, "null_tracks": tracks_path},
+        outputs={
+            "eval_prompts": prompts_path,
+            "null_tracks": tracks_path,
+            "sanity_tracks": sanity_path,
+        },
     )
     write_manifest(out_dir / "data_manifest.json", manifest)
     typer.echo(prompts.groupby("domain").size().to_string())
     typer.echo(tracks.groupby("split").agg(tracks=("id", "size"), artists=("author", "nunique")))
+
+
+@app.command("train-null")
+def train_null_cmd(
+    fma_root: Path,
+    song_describer_audio: Path,
+    config: Path = Path("configs/null_music_v1.yaml"),
+    model: str = "stabilityai/stable-audio-open-1.0",
+    out: Path | None = None,
+) -> None:
+    from audiocfg.models.sao import StableAudio
+    from audiocfg.repro.config import NullTrainConfig
+    from audiocfg.train.run import run_null_experiment
+
+    cfg = NullTrainConfig.from_yaml(config)
+    sao = StableAudio.load(model, dtype="auto", offload="off")
+    run_null_experiment(sao, cfg, fma_root, song_describer_audio, out or cfg.run_dir())
 
 
 if __name__ == "__main__":
