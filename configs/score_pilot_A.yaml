@@ -1,0 +1,16 @@
+name: score_pilot_A
+master_seed: 2026
+output_dir: outputs
+
+clap_models:
+  music: laion/larger_clap_music_and_speech@195c3a3e68faebb3e2088b9a79e79b43ddbda76b
+  general: laion/larger_clap_general@ada0c23a36c4e8582805bb38fec3905903f18b41
+primary_clap:
+  music: music
+  sfx: general
+aesthetics: facebook/audiobox-aesthetics@9b1dd8e5df9af7216e836a98974fe3b82c56ded6
+
+reference_tracks: 300
+reference_offset: 30.0
+seconds: 10.0
+batch_size: 16

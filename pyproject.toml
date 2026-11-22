@@ -43,9 +43,7 @@ models = [
 ]
 # Evaluation metrics.
 metrics = [
-    "laion-clap>=1.1.6",
     "audiobox_aesthetics>=0.0.4",
-    "openl3>=0.4.2",
 ]
 dev = [
     "pytest>=8",

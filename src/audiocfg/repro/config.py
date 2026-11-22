@@ -72,3 +72,16 @@ class SweepConfig(StageConfig):
     steps: int = 50
     seconds: float = 10.0
     batch_size: int = 4
+
+
+class ScoreConfig(StageConfig):
+    clap_models: dict[str, str] = {
+        "music": "laion/larger_clap_music_and_speech@195c3a3e68faebb3e2088b9a79e79b43ddbda76b",
+        "general": "laion/larger_clap_general@ada0c23a36c4e8582805bb38fec3905903f18b41",
+    }
+    primary_clap: dict[str, str] = {"music": "music", "sfx": "general"}
+    aesthetics: str = "facebook/audiobox-aesthetics@9b1dd8e5df9af7216e836a98974fe3b82c56ded6"
+    reference_tracks: int = 300
+    reference_offset: float = 30.0
+    seconds: float = 10.0
+    batch_size: int = 16

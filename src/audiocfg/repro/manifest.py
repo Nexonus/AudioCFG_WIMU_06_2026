@@ -23,9 +23,9 @@ TRACKED_PACKAGES = (
     "transformers",
     "accelerate",
     "safetensors",
-    "laion-clap",
     "audiobox_aesthetics",
-    "openl3",
+    "librosa",
+    "soundfile",
 )
 
 

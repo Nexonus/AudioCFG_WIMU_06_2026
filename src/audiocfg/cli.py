@@ -164,5 +164,25 @@ def collect_sweep(
     typer.echo(f"{len(clips)} rows ({expected} generated jobs) -> {path}")
 
 
+@app.command()
+def score(
+    sweep_dir: Path,
+    reference: Path | None = None,
+    config: Path = Path("configs/score_pilot_A.yaml"),
+    out: Path | None = None,
+) -> None:
+    from audiocfg.metrics.score import score_sweep
+    from audiocfg.repro.config import ScoreConfig
+    from audiocfg.repro.manifest import build_manifest, write_manifest
+
+    cfg = ScoreConfig.from_yaml(config)
+    out = out or cfg.run_dir()
+    clips = sweep_dir / "clips.parquet"
+    paths = score_sweep(cfg, clips, sweep_dir / "audio", reference, out)
+    manifest = build_manifest(cfg, inputs={"clips": clips}, outputs=paths)
+    write_manifest(out / "manifest.json", manifest)
+    typer.echo(f"scores -> {out}")
+
+
 if __name__ == "__main__":
     app()
