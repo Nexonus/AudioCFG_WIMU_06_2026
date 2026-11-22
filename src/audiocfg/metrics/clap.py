@@ -12,6 +12,8 @@ class Clap:
     def __init__(self, repo: str, revision: str | None = None, device: str = "cuda"):
         from transformers import ClapModel, ClapProcessor
 
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
         self.device = device if torch.cuda.is_available() else "cpu"
         self.model = ClapModel.from_pretrained(repo, revision=revision).to(self.device).eval()
         self.processor = ClapProcessor.from_pretrained(repo, revision=revision)
