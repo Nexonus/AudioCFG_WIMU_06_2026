@@ -109,7 +109,8 @@ def score_sweep(
     if reference_root is not None:
         files = reference_files(reference_root, cfg.reference_tracks, cfg.master_seed)
         ref = [load_mono(str(f), offset=cfg.reference_offset, seconds=cfg.seconds) for f in files]
-        ref = [w for w in ref if len(w) == int(cfg.seconds * CLAP_SR)]
+        n = int(cfg.seconds * CLAP_SR)
+        ref = [np.pad(w, (0, n - len(w)))[:n] for w in ref if len(w) >= 0.9 * n]
         print(f"reference: {len(ref)} of {len(files)} tracks", flush=True)
         for name, m in claps.items():
             ref_emb[name] = np.concatenate([m.embed_audio(b) for b in batches(ref, cfg.batch_size)])

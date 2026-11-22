@@ -184,5 +184,30 @@ def score(
     typer.echo(f"scores -> {out}")
 
 
+@app.command()
+def analyze(
+    score_dir: Path = Path("results/score_pilot_A"),
+    out: Path = Path("results/analysis_pilot_A"),
+    n_boot: int = 2000,
+) -> None:
+    import pandas as pd
+
+    from audiocfg.analysis.pareto import curves, matched_clap_test, per_prompt, same_g_differences
+
+    table = per_prompt(
+        pd.read_parquet(score_dir / "scores.parquet"),
+        pd.read_parquet(score_dir / "diversity.parquet"),
+    )
+    out.mkdir(parents=True, exist_ok=True)
+    results = {
+        "curves": curves(table),
+        "same_g": same_g_differences(table),
+        "matched_clap": matched_clap_test(table, n_boot=n_boot),
+    }
+    for name, df in results.items():
+        df.to_csv(out / f"{name}.csv", index=False, lineterminator="\n", float_format="%.6g")
+    typer.echo(results["matched_clap"].round(3).to_string(index=False))
+
+
 if __name__ == "__main__":
     app()
