@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from audiocfg.metrics.distribution import ccds, frechet_distance
-from audiocfg.metrics.score import diversity, reference_files, split_ref
+from audiocfg.metrics.score import diversity, fit_length, reference_files, split_ref
 
 
 def test_ccds_bounds():
@@ -51,3 +51,8 @@ def test_diversity_groups_by_prompt_guidance_null():
     assert div.loc["zero", "ccds_m"] < 1e-9
     assert abs(div.loc["learned", "ccds_m"] - 1) < 1e-9
     assert (div["n"] == 2).all()
+
+
+def test_fit_length_pads_and_crops():
+    assert fit_length(np.ones(7), 10).tolist() == [1.0] * 7 + [0.0] * 3
+    assert len(fit_length(np.ones(12), 10)) == 10
