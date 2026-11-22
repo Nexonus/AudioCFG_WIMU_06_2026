@@ -60,3 +60,15 @@ class NullTrainConfig(StageConfig):
     val_draws: int = 4
     sanity_draws: int = 2
     eval_batch: int = 8
+
+
+class SweepConfig(StageConfig):
+    prompts: Path = Path("data/eval_prompts.csv")
+    prompts_per_domain: int = 24
+    samples_per_prompt: int = 3
+    seed_set: str = "A"
+    guidance: tuple[float, ...] = (1, 2, 3, 4.5, 6, 7, 9, 12)
+    nulls: dict[str, str] = {"zero": "zero"}
+    steps: int = 50
+    seconds: float = 10.0
+    batch_size: int = 4

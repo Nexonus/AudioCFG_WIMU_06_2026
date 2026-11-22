@@ -119,5 +119,50 @@ def train_null_cmd(
     run_null_experiment(sao, cfg, fma_root, song_describer_audio, out or cfg.run_dir())
 
 
+@app.command()
+def sweep(
+    config: Path = Path("configs/sweep_pilot_A.yaml"),
+    model: str = "stabilityai/stable-audio-open-1.0",
+    out: Path | None = None,
+    shard: int = 0,
+    shards: int = 1,
+) -> None:
+    from audiocfg.generate.sweep import run_sweep
+    from audiocfg.models.sao import StableAudio
+    from audiocfg.repro.config import SweepConfig
+
+    cfg = SweepConfig.from_yaml(config)
+    sao = StableAudio.load(model, dtype="auto", offload="off")
+    out = out or cfg.run_dir()
+    out.mkdir(parents=True, exist_ok=True)
+    run_sweep(sao, cfg, out, shard, shards)
+
+
+@app.command("collect-sweep")
+def collect_sweep(
+    config: Path = Path("configs/sweep_pilot_A.yaml"), out: Path | None = None
+) -> None:
+    import pandas as pd
+
+    from audiocfg.generate.sweep import build_jobs, collect, select_prompts
+    from audiocfg.repro.config import SweepConfig
+    from audiocfg.repro.manifest import build_manifest, write_manifest
+
+    cfg = SweepConfig.from_yaml(config)
+    out = out or cfg.run_dir()
+    clips = collect(out, tuple(cfg.nulls))
+    prompts = select_prompts(pd.read_csv(cfg.prompts), cfg.prompts_per_domain)
+    expected = len(build_jobs(prompts, cfg))
+    path = out / "clips.parquet"
+    clips.to_parquet(path, index=False)
+    inputs = {"prompts": cfg.prompts}
+    inputs |= {f"null_{k}": v for k, v in cfg.nulls.items() if v.endswith(".safetensors")}
+    manifest = build_manifest(
+        cfg, inputs=inputs, outputs={"clips": path}, extra={"jobs": expected, "rows": len(clips)}
+    )
+    write_manifest(out / "manifest.json", manifest)
+    typer.echo(f"{len(clips)} rows ({expected} generated jobs) -> {path}")
+
+
 if __name__ == "__main__":
     app()
