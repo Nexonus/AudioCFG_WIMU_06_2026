@@ -100,3 +100,11 @@ def test_sweep_resumes_and_collects(tmp_path):
     assert len(clips) == 4 * 2 * 3 * 2
     g1 = clips[clips.guidance == 1].groupby(["prompt_id", "sample"])["clip"].nunique()
     assert (g1 == 1).all()
+
+
+def test_select_prompts_window():
+    prompts = pd.DataFrame(
+        {"prompt_id": [f"p{i}" for i in range(6)], "domain": "music", "rank": range(6)}
+    )
+    assert select_prompts(prompts, 2)["prompt_id"].tolist() == ["p0", "p1"]
+    assert select_prompts(prompts, 2, first=3)["prompt_id"].tolist() == ["p3", "p4"]

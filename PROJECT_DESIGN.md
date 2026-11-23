@@ -1,3 +1,5 @@
+> **Nieaktualne.** To pierwotna propozycja z października 2026. Aktualna hipoteza, specyfikacja i wyniki są w [notebooks/prototyp_audiocfg.ipynb](notebooks/prototyp_audiocfg.ipynb).
+
 # AudioCFG — Projekt wstępny (Project Design)
 
 **WIMU, semestr zimowy 2026 · Zespół 06 · Politechnika Warszawska**

@@ -30,8 +30,8 @@ class Job:
         return f"{self.null}/{self.prompt_id}_s{self.sample}_g{self.guidance:g}.flac"
 
 
-def select_prompts(prompts: pd.DataFrame, per_domain: int) -> pd.DataFrame:
-    chosen = prompts[prompts["rank"] < per_domain]
+def select_prompts(prompts: pd.DataFrame, per_domain: int, first: int = 0) -> pd.DataFrame:
+    chosen = prompts[(prompts["rank"] >= first) & (prompts["rank"] < first + per_domain)]
     return chosen.sort_values(["domain", "rank"]).reset_index(drop=True)
 
 
@@ -61,7 +61,7 @@ def expand_shared(rows: pd.DataFrame, nulls: tuple[str, ...]) -> pd.DataFrame:
 def run_sweep(sao, cfg: SweepConfig, out: Path, shard_index: int = 0, shard_count: int = 1):
     import soundfile as sf
 
-    prompts = select_prompts(pd.read_csv(cfg.prompts), cfg.prompts_per_domain)
+    prompts = select_prompts(pd.read_csv(cfg.prompts), cfg.prompts_per_domain, cfg.first_prompt)
     jobs = shard(build_jobs(prompts, cfg), shard_index, shard_count)
     nulls = {name: resolve_null(spec, sao) for name, spec in cfg.nulls.items()}
     zero = torch.zeros(sao.text_shape)

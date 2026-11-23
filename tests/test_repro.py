@@ -86,3 +86,12 @@ def test_manifest_records_inputs_and_config(tmp_path):
     assert loaded["inputs"]["prompts"]["sha256"] == sha256_file(data)
     assert {"commit", "dirty", "branch"} <= set(loaded["git"])
     assert loaded["packages"]["numpy"] == np.__version__
+
+
+def test_canonical_json_posix_paths_and_skips_new_defaults():
+    from audiocfg.repro.config import SweepConfig
+
+    canonical = SweepConfig(name="s", prompts=Path("data") / "p.csv").canonical_json()
+    assert '"prompts":"data/p.csv"' in canonical
+    assert "first_prompt" not in canonical
+    assert "first_prompt" in SweepConfig(name="s", first_prompt=24).canonical_json()

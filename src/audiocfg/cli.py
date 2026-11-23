@@ -151,7 +151,7 @@ def collect_sweep(
     cfg = SweepConfig.from_yaml(config)
     out = out or cfg.run_dir()
     clips = collect(out, tuple(cfg.nulls))
-    prompts = select_prompts(pd.read_csv(cfg.prompts), cfg.prompts_per_domain)
+    prompts = select_prompts(pd.read_csv(cfg.prompts), cfg.prompts_per_domain, cfg.first_prompt)
     expected = len(build_jobs(prompts, cfg))
     path = out / "clips.parquet"
     clips.to_parquet(path, index=False)
@@ -189,6 +189,7 @@ def analyze(
     score_dir: Path = Path("results/score_pilot_A"),
     out: Path = Path("results/analysis_pilot_A"),
     n_boot: int = 2000,
+    criterion: Path | None = None,
 ) -> None:
     import pandas as pd
 
@@ -204,9 +205,66 @@ def analyze(
         "same_g": same_g_differences(table),
         "matched_clap": matched_clap_test(table, n_boot=n_boot),
     }
+    if criterion is not None:
+        from audiocfg.analysis.criterion import verdict
+        from audiocfg.repro.config import CriterionConfig
+
+        crit = CriterionConfig.from_yaml(criterion)
+        results["matched_clap"] = matched_clap_test(
+            table, n_boot=crit.n_boot, seed=crit.master_seed, level=crit.level
+        )
+        fd_path = score_dir / "fd_music.csv"
+        fd = pd.read_csv(fd_path) if fd_path.exists() else None
+        results["verdict"] = verdict(results["matched_clap"], crit, fd)
     for name, df in results.items():
         df.to_csv(out / f"{name}.csv", index=False, lineterminator="\n", float_format="%.6g")
     typer.echo(results["matched_clap"].round(3).to_string(index=False))
+    if "verdict" in results:
+        typer.echo(results["verdict"].to_string(index=False))
+
+
+@app.command("listen-pairs")
+def listen_pairs(
+    clips: Path = Path("results/sweep_pilot_A/clips.parquet"),
+    out: Path = Path("results/listen_pilot_A/pairs.csv"),
+    seed: int = 2026,
+) -> None:
+    import pandas as pd
+
+    from audiocfg.listen.abx import make_pairs
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    pairs = make_pairs(pd.read_parquet(clips), seed=seed)
+    pairs.to_csv(out, index=False, lineterminator="\n")
+    typer.echo(f"{len(pairs)} pairs -> {out}")
+
+
+@app.command("listen-audio")
+def listen_audio(
+    audio_root: Path,
+    pairs: Path = Path("results/listen_pilot_A/pairs.csv"),
+    out: Path = Path("outputs/listen_pilot_A"),
+) -> None:
+    import pandas as pd
+
+    from audiocfg.listen.abx import export_audio
+
+    typer.echo(f"-> {export_audio(pd.read_csv(pairs), audio_root, out)}")
+
+
+@app.command("listen-tally")
+def listen_tally(
+    answers: Path = Path("results/listen_pilot_A/answers"),
+    pairs: Path = Path("results/listen_pilot_A/pairs.csv"),
+    out: Path = Path("results/listen_pilot_A/tally.csv"),
+) -> None:
+    import pandas as pd
+
+    from audiocfg.listen.abx import load_answers, tally
+
+    result = tally(load_answers(answers), pd.read_csv(pairs))
+    result.to_csv(out, index=False, lineterminator="\n", float_format="%.4g")
+    typer.echo(result.round(3).to_string(index=False))
 
 
 if __name__ == "__main__":

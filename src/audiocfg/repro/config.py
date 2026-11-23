@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import TypeVar
+from typing import ClassVar, TypeVar
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -17,6 +17,7 @@ class StageConfig(BaseModel):
     name: str
     master_seed: int = 2026
     output_dir: Path = Path("outputs")
+    unhashed_defaults: ClassVar[tuple[str, ...]] = ()
 
     @classmethod
     def from_yaml(cls: type[T], path: str | Path) -> T:
@@ -25,7 +26,14 @@ class StageConfig(BaseModel):
         return cls.model_validate(data)
 
     def canonical_json(self) -> str:
-        return json.dumps(self.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+        data = self.model_dump(mode="json")
+        for key, value in self:
+            if isinstance(value, Path):
+                data[key] = value.as_posix()
+        for key in self.unhashed_defaults:
+            if data[key] == type(self).model_fields[key].default:
+                del data[key]
+        return json.dumps(data, sort_keys=True, separators=(",", ":"))
 
     def config_hash(self) -> str:
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
@@ -65,6 +73,7 @@ class NullTrainConfig(StageConfig):
 class SweepConfig(StageConfig):
     prompts: Path = Path("data/eval_prompts.csv")
     prompts_per_domain: int = 24
+    first_prompt: int = 0
     samples_per_prompt: int = 3
     seed_set: str = "A"
     guidance: tuple[float, ...] = (1, 2, 3, 4.5, 6, 7, 9, 12)
@@ -72,6 +81,8 @@ class SweepConfig(StageConfig):
     steps: int = 50
     seconds: float = 10.0
     batch_size: int = 4
+    # added after pilot A: left out of the hash at its default so pilot A keeps its hash
+    unhashed_defaults: ClassVar[tuple[str, ...]] = ("first_prompt",)
 
 
 class ScoreConfig(StageConfig):
@@ -85,3 +96,10 @@ class ScoreConfig(StageConfig):
     reference_offset: float = 30.0
     seconds: float = 10.0
     batch_size: int = 16
+
+
+class CriterionConfig(StageConfig):
+    guidance: tuple[float, ...] = (6.0, 7.0, 9.0)
+    ccds_margin: dict[str, float]
+    n_boot: int = 2000
+    level: float = 0.95

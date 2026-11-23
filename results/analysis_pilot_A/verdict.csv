@@ -1,0 +1,7 @@
+domain,g_learned,g_star_zero,pq_better,ccds_not_worse,fd_agrees,advantage
+music,6,1.83778,True,False,False,False
+music,7,1.76206,True,False,False,False
+music,9,1.72954,True,False,False,False
+sfx,6,3.85131,False,False,,False
+sfx,7,3.43888,False,False,,False
+sfx,9,3.53849,False,False,,False
