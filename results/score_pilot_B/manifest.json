@@ -1,0 +1,85 @@
+{
+  "command": [
+    "/usr/local/bin/audiocfg",
+    "score",
+    "/kaggle/input/notebooks/yibuxx/audiocfg-b/sweep_pilot_B",
+    "--reference",
+    "/kaggle/input/datasets/chibuzokelechi/song-describer-dataset/song_describer/audio",
+    "--config",
+    "configs/score_pilot_B.yaml",
+    "--out",
+    "/kaggle/working/score_pilot_B"
+  ],
+  "config": {
+    "aesthetics": "facebook/audiobox-aesthetics@9b1dd8e5df9af7216e836a98974fe3b82c56ded6",
+    "batch_size": 16,
+    "clap_models": {
+      "general": "laion/larger_clap_general@ada0c23a36c4e8582805bb38fec3905903f18b41",
+      "music": "laion/larger_clap_music_and_speech@195c3a3e68faebb3e2088b9a79e79b43ddbda76b"
+    },
+    "master_seed": 2026,
+    "name": "score_pilot_B",
+    "output_dir": "outputs",
+    "primary_clap": {
+      "music": "music",
+      "sfx": "general"
+    },
+    "reference_offset": 30.0,
+    "reference_tracks": 300,
+    "seconds": 10.0
+  },
+  "config_class": "ScoreConfig",
+  "config_hash": "9e9390c9c697cb0724f44adf20eb91fa8d92f646b62810552a3473c314cc4b29",
+  "created_utc": "2026-11-23T17:23:09+00:00",
+  "device": {
+    "cuda": true,
+    "cuda_version": "13.0",
+    "gpus": [
+      "Tesla T4",
+      "Tesla T4"
+    ]
+  },
+  "extra": {},
+  "git": {
+    "branch": "HEAD",
+    "commit": "a32579fed87ecec6d62b0d28306e0a3e4f0be235",
+    "dirty": false
+  },
+  "inputs": {
+    "clips": {
+      "path": "/kaggle/input/notebooks/yibuxx/audiocfg-b/sweep_pilot_B/clips.parquet",
+      "sha256": "f2e6fb0860b3fabbdeecdb92403bb0b356c674cbcdf0b7148888b369007de375"
+    }
+  },
+  "outputs": {
+    "diversity": {
+      "path": "/kaggle/working/score_pilot_B/diversity.parquet",
+      "sha256": "46ee4014f65ca6e74a7ffbcb20dfed230d33f86877631413a6b25150cf95d708"
+    },
+    "fd": {
+      "path": "/kaggle/working/score_pilot_B/fd_music.csv",
+      "sha256": "f6f182494fe84c25025752cd61f632112a18996e00259ce8f362dc5d66a3debf"
+    },
+    "scores": {
+      "path": "/kaggle/working/score_pilot_B/scores.parquet",
+      "sha256": "c116a6f555a1d1557320b3656c12bc3eea4ab55f42008d7824cbf223466b6850"
+    }
+  },
+  "packages": {
+    "accelerate": "1.15.0",
+    "audiobox_aesthetics": "0.0.4",
+    "audiocfg": "0.1.0",
+    "diffusers": "0.42.0",
+    "librosa": "0.11.0",
+    "numpy": "2.1.3",
+    "pandas": "2.3.3",
+    "safetensors": "0.8.0",
+    "scipy": "1.16.3",
+    "soundfile": "0.14.0",
+    "torch": "2.11.0+cu130",
+    "torchaudio": "2.11.0+cu130",
+    "transformers": "5.20.2"
+  },
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "python": "3.13.16"
+}
