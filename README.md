@@ -30,5 +30,3 @@ Wyniki w `results/` są zacommitowane razem z manifestami (commit, hash configu,
 | `results/` | wyniki z manifestami |
 | `kaggle/` | joby GPU, uruchamiane przez `kaggle/push.py` z konkretnego commita |
 | `notebooks/` | notatnik z propozycją, instrukcją odtworzenia i wynikami |
-
-`PROJECT_DESIGN.md` to pierwotna propozycja z października 2026. Zastąpił ją notatnik.
