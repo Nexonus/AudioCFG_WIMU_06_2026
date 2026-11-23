@@ -1,0 +1,20 @@
+{
+  "repo": "stabilityai/stable-audio-open-1.0",
+  "revision": "f21265c1e2710b3bd2386596943f0007f55f802e",
+  "sha256": {
+    "model_index.json": "80b5bfb4f4ed10f56f27846377f000541d341eed6db17041b820606c548be6a9",
+    "projection_model/config.json": "a83ff2e87d709803d7702bdadb705e72b22ced16ad0fd929a8af1d11ed57b2a1",
+    "projection_model/diffusion_pytorch_model.safetensors": "032102e2b0e4b9b9e19c648dc476345157b97906752a7b4b7a0133900f340926",
+    "scheduler/scheduler_config.json": "7d476d3ad984693c144169ae7e7fd978cf2cd6bb3b9b224db3ee944d83a5ad41",
+    "text_encoder/config.json": "491696a2ea20e9f5e78b4f150fab241a42d9d64d75b8031cab5b91d2da62a535",
+    "text_encoder/model.safetensors": "095878c81d21f17d235e1b4aa20e9595289177e2658ef4dcec69fa5aa3b07ca2",
+    "tokenizer/special_tokens_map.json": "5c87151ef0f72a99d1f766a4c418bd2a1f90aaa30a8e22fe5eca9641daebb64f",
+    "tokenizer/spiece.model": "d60acb128cf7b7f2536e8f38a5b18a05535c9e14c7a355904270e15b0945ea86",
+    "tokenizer/tokenizer.json": "71c33c3bf57bf2e19b4f8ac686ad8d182a79f7cd1a4921889437c453420223f1",
+    "tokenizer/tokenizer_config.json": "63c92e838e62d98bf80514739be8eba70707aedf656a1faf113d5d4ae585045c",
+    "transformer/config.json": "b5dd7f337bdcb51f68d414d619710d9fe5b9d18a3c1056afcb9ae6e020478414",
+    "transformer/diffusion_pytorch_model.safetensors": "65ae9715febfeb2dc9f33aa506c2bda69fd2ddf8ebc483fb2df090df4ca506fd",
+    "vae/config.json": "858b6cce27aa1b2d1e8d331734d2d9690d9ea1dad2fb1e6bd23ee67a61058ad9",
+    "vae/diffusion_pytorch_model.safetensors": "2131cdb52020b2473707465449d8bdb4f6cca61c93150a947baca02bc58ffd7b"
+  }
+}

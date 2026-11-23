@@ -1,0 +1,90 @@
+{
+  "command": [
+    "/usr/local/bin/audiocfg",
+    "collect-sweep",
+    "--config",
+    "configs/sweep_pilot_B.yaml",
+    "--out",
+    "/kaggle/working/sweep_pilot_B"
+  ],
+  "config": {
+    "batch_size": 4,
+    "first_prompt": 24,
+    "guidance": [
+      1.0,
+      2.0,
+      3.0,
+      4.5,
+      6.0,
+      7.0,
+      9.0,
+      12.0
+    ],
+    "master_seed": 2026,
+    "name": "sweep_pilot_B",
+    "nulls": {
+      "learned": "results/null_music_v1/null_music_v1_learned_zero.safetensors",
+      "zero": "zero"
+    },
+    "output_dir": "outputs",
+    "prompts": "data/eval_prompts.csv",
+    "prompts_per_domain": 24,
+    "samples_per_prompt": 3,
+    "seconds": 10.0,
+    "seed_set": "B",
+    "steps": 50
+  },
+  "config_class": "SweepConfig",
+  "config_hash": "b8a9b3cae754e66116648eec3985c12ac29dfd702512c45a0ca4c3d4601b363e",
+  "created_utc": "2026-11-23T15:12:27+00:00",
+  "device": {
+    "cuda": true,
+    "cuda_version": "13.0",
+    "gpus": [
+      "Tesla T4",
+      "Tesla T4"
+    ]
+  },
+  "extra": {
+    "jobs": 2160,
+    "rows": 2304
+  },
+  "git": {
+    "branch": "HEAD",
+    "commit": "a32579fed87ecec6d62b0d28306e0a3e4f0be235",
+    "dirty": false
+  },
+  "inputs": {
+    "null_learned": {
+      "path": "results/null_music_v1/null_music_v1_learned_zero.safetensors",
+      "sha256": "8066d567cd62cb9302e99fb98bd478c2605c6e300c0b5e99c45db28ae5afa56a"
+    },
+    "prompts": {
+      "path": "data/eval_prompts.csv",
+      "sha256": "7fc29de0550ef5b849472015315323e03a441648797583e0dd5726dc2b5e3922"
+    }
+  },
+  "outputs": {
+    "clips": {
+      "path": "/kaggle/working/sweep_pilot_B/clips.parquet",
+      "sha256": "f2e6fb0860b3fabbdeecdb92403bb0b356c674cbcdf0b7148888b369007de375"
+    }
+  },
+  "packages": {
+    "accelerate": "1.15.0",
+    "audiobox_aesthetics": null,
+    "audiocfg": "0.1.0",
+    "diffusers": "0.42.0",
+    "librosa": "0.11.0",
+    "numpy": "2.1.3",
+    "pandas": "2.3.3",
+    "safetensors": "0.8.0",
+    "scipy": "1.16.3",
+    "soundfile": "0.14.0",
+    "torch": "2.11.0+cu130",
+    "torchaudio": "2.11.0+cu130",
+    "transformers": "5.20.2"
+  },
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+  "python": "3.13.16"
+}

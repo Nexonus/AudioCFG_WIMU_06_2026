@@ -1,0 +1,49 @@
+pair_id,condition,prompt_id,text,sample,g_learned,g_zero,clip_a,clip_b,a_is
+p00,same_g,sd_12303,This is an energetic song featuring brass air instruments and harmonica.,1,7.0,7.0,learned/sd_12303_s1_g7.flac,zero/sd_12303_s1_g7.flac,learned
+p01,matched_clap,sd_208937,Soothing ambient soundscape with characteristic piano flourishes and a soft drum backdrop,2,7.0,2.0,zero/sd_208937_s2_g2.flac,learned/sd_208937_s2_g7.flac,zero
+p02,same_g,sd_146588,Innocent and playful classical music for orchestra featuring wind musical instruments such as oboes or fagots.,2,7.0,7.0,zero/sd_146588_s2_g7.flac,learned/sd_146588_s2_g7.flac,zero
+p03,matched_clap,sd_1356349,A positive and enthusiastic pop-rock song from the 80s featuring reverbered guitars.,2,7.0,2.0,zero/sd_1356349_s2_g2.flac,learned/sd_1356349_s2_g7.flac,zero
+p04,matched_clap,sd_363326,"It's a folk song with country vibe, major chord, and rock drum kit.",0,7.0,2.0,zero/sd_363326_s0_g2.flac,learned/sd_363326_s0_g7.flac,zero
+p05,matched_clap,sd_1386744,An instrumental track with a lead electric guitar and synths well suited for drinking a gin on a sunny afternoon by the pool.,2,7.0,2.0,zero/sd_1386744_s2_g2.flac,learned/sd_1386744_s2_g7.flac,zero
+p06,same_g,sd_1408401,"A quartet of drums, double bass, piano and saxophone performing a slow and beautiful jazz song perfect for an evening in a café.",2,7.0,7.0,learned/sd_1408401_s2_g7.flac,zero/sd_1408401_s2_g7.flac,learned
+p07,same_g,sd_330650,This is an electro track with punchy drums and a synth that makes you want to dance.,0,7.0,7.0,learned/sd_330650_s0_g7.flac,zero/sd_330650_s0_g7.flac,learned
+p08,same_g,sd_208937,Soothing ambient soundscape with characteristic piano flourishes and a soft drum backdrop,2,7.0,7.0,learned/sd_208937_s2_g7.flac,zero/sd_208937_s2_g7.flac,learned
+p09,same_g,sd_1009671,Uplifting English rock and roll song with a positive feeling.,2,7.0,7.0,zero/sd_1009671_s2_g7.flac,learned/sd_1009671_s2_g7.flac,zero
+p10,matched_clap,sd_1113971,Progressive electronic song with an intro of African percussions.,1,7.0,2.0,learned/sd_1113971_s1_g7.flac,zero/sd_1113971_s1_g2.flac,learned
+p11,matched_clap,sd_1009671,Uplifting English rock and roll song with a positive feeling.,2,7.0,2.0,zero/sd_1009671_s2_g2.flac,learned/sd_1009671_s2_g7.flac,zero
+p12,same_g,sd_359653,"Classical solo piano music, romantic period. Complex harmonic textures, the pièce reminds of a joyful but melancholic moment, with cold weather outside and the bite of winter at the door, sitting around a fireplace in the living room.",2,7.0,7.0,learned/sd_359653_s2_g7.flac,zero/sd_359653_s2_g7.flac,learned
+p13,matched_clap,sd_1307838,"Rock song starting with guitar line, with a catchy refrain.",1,7.0,2.0,learned/sd_1307838_s1_g7.flac,zero/sd_1307838_s1_g2.flac,learned
+p14,matched_clap,sd_461017,A harsh instrumental rock song which sounds a bit artificial and dull.,2,7.0,2.0,learned/sd_461017_s2_g7.flac,zero/sd_461017_s2_g2.flac,learned
+p15,matched_clap,sd_4883,Jungle or forest fauna sounds followed by floaty ethnic flute solo on top of some hopeful synthesizer harmonies.,2,7.0,2.0,learned/sd_4883_s2_g7.flac,zero/sd_4883_s2_g2.flac,learned
+p16,same_g,sd_461017,A harsh instrumental rock song which sounds a bit artificial and dull.,2,7.0,7.0,zero/sd_461017_s2_g7.flac,learned/sd_461017_s2_g7.flac,zero
+p17,same_g,sd_363326,"It's a folk song with country vibe, major chord, and rock drum kit.",0,7.0,7.0,learned/sd_363326_s0_g7.flac,zero/sd_363326_s0_g7.flac,learned
+p18,matched_clap,sd_617330,"Cheerful French love song in a reggae style, and with chorus in English.",2,7.0,2.0,zero/sd_617330_s2_g2.flac,learned/sd_617330_s2_g7.flac,zero
+p19,same_g,sd_1194314,The song starts with a sad piano riff that has a wavy and mellow feel for someone who was hurt or is depressed that someone can bob their head to slowly in anguish,0,7.0,7.0,zero/sd_1194314_s0_g7.flac,learned/sd_1194314_s0_g7.flac,zero
+p20,matched_clap,sd_1318704,"An upbeat pop instrumental track starting with synthesized piano sound, later with guitar added in, and then a saxophone-like melody line.",1,7.0,2.0,zero/sd_1318704_s1_g2.flac,learned/sd_1318704_s1_g7.flac,zero
+p21,matched_clap,sd_359656,"Classical piano piece in major key with a slow start, played beautifully without other instruments, making you close your eyes and find inner peace.",1,7.0,2.0,learned/sd_359656_s1_g7.flac,zero/sd_359656_s1_g2.flac,learned
+p22,same_g,sd_1386744,An instrumental track with a lead electric guitar and synths well suited for drinking a gin on a sunny afternoon by the pool.,2,7.0,7.0,zero/sd_1386744_s2_g7.flac,learned/sd_1386744_s2_g7.flac,zero
+p23,matched_clap,sd_376422,Instrumental with mostly piano that has a melancholic feel which can be heard alone,0,7.0,2.0,zero/sd_376422_s0_g2.flac,learned/sd_376422_s0_g7.flac,zero
+p24,matched_clap,sd_1162014,A pop-rock track very close to a proto-punk sound.,1,7.0,2.0,zero/sd_1162014_s1_g2.flac,learned/sd_1162014_s1_g7.flac,zero
+p25,same_g,sd_1069500,Elegant and pure sounds that convey a sense of order and cleanliness,0,7.0,7.0,zero/sd_1069500_s0_g7.flac,learned/sd_1069500_s0_g7.flac,zero
+p26,same_g,sd_4883,Jungle or forest fauna sounds followed by floaty ethnic flute solo on top of some hopeful synthesizer harmonies.,2,7.0,7.0,zero/sd_4883_s2_g7.flac,learned/sd_4883_s2_g7.flac,zero
+p27,matched_clap,sd_359653,"Classical solo piano music, romantic period. Complex harmonic textures, the pièce reminds of a joyful but melancholic moment, with cold weather outside and the bite of winter at the door, sitting around a fireplace in the living room.",2,7.0,2.0,learned/sd_359653_s2_g7.flac,zero/sd_359653_s2_g2.flac,learned
+p28,same_g,sd_617330,"Cheerful French love song in a reggae style, and with chorus in English.",2,7.0,7.0,learned/sd_617330_s2_g7.flac,zero/sd_617330_s2_g7.flac,learned
+p29,matched_clap,sd_415590,"An instrumental trip hop track, with a slow electronic beat dominated by synth pads, delayed guitar and guitar effects.",0,7.0,2.0,zero/sd_415590_s0_g2.flac,learned/sd_415590_s0_g7.flac,zero
+p30,matched_clap,sd_330650,This is an electro track with punchy drums and a synth that makes you want to dance.,0,7.0,2.0,zero/sd_330650_s0_g2.flac,learned/sd_330650_s0_g7.flac,zero
+p31,same_g,sd_1318704,"An upbeat pop instrumental track starting with synthesized piano sound, later with guitar added in, and then a saxophone-like melody line.",1,7.0,7.0,zero/sd_1318704_s1_g7.flac,learned/sd_1318704_s1_g7.flac,zero
+p32,same_g,sd_1356349,A positive and enthusiastic pop-rock song from the 80s featuring reverbered guitars.,2,7.0,7.0,learned/sd_1356349_s2_g7.flac,zero/sd_1356349_s2_g7.flac,learned
+p33,matched_clap,sd_12303,This is an energetic song featuring brass air instruments and harmonica.,1,7.0,2.0,learned/sd_12303_s1_g7.flac,zero/sd_12303_s1_g2.flac,learned
+p34,same_g,sd_1307838,"Rock song starting with guitar line, with a catchy refrain.",1,7.0,7.0,zero/sd_1307838_s1_g7.flac,learned/sd_1307838_s1_g7.flac,zero
+p35,same_g,sd_1113971,Progressive electronic song with an intro of African percussions.,1,7.0,7.0,zero/sd_1113971_s1_g7.flac,learned/sd_1113971_s1_g7.flac,zero
+p36,same_g,sd_376422,Instrumental with mostly piano that has a melancholic feel which can be heard alone,0,7.0,7.0,learned/sd_376422_s0_g7.flac,zero/sd_376422_s0_g7.flac,learned
+p37,matched_clap,sd_1093793,Electronic disco music about love that builds up quickly and has a dance beat to it,0,7.0,2.0,learned/sd_1093793_s0_g7.flac,zero/sd_1093793_s0_g2.flac,learned
+p38,same_g,sd_359656,"Classical piano piece in major key with a slow start, played beautifully without other instruments, making you close your eyes and find inner peace.",1,7.0,7.0,learned/sd_359656_s1_g7.flac,zero/sd_359656_s1_g7.flac,learned
+p39,matched_clap,sd_1408401,"A quartet of drums, double bass, piano and saxophone performing a slow and beautiful jazz song perfect for an evening in a café.",2,7.0,2.0,zero/sd_1408401_s2_g2.flac,learned/sd_1408401_s2_g7.flac,zero
+p40,matched_clap,sd_1169734,"It is an instrumental piano song, with a moody relaxing and gentle tone",1,7.0,2.0,learned/sd_1169734_s1_g7.flac,zero/sd_1169734_s1_g2.flac,learned
+p41,same_g,sd_1162014,A pop-rock track very close to a proto-punk sound.,1,7.0,7.0,zero/sd_1162014_s1_g7.flac,learned/sd_1162014_s1_g7.flac,zero
+p42,same_g,sd_1169734,"It is an instrumental piano song, with a moody relaxing and gentle tone",1,7.0,7.0,zero/sd_1169734_s1_g7.flac,learned/sd_1169734_s1_g7.flac,zero
+p43,same_g,sd_415590,"An instrumental trip hop track, with a slow electronic beat dominated by synth pads, delayed guitar and guitar effects.",0,7.0,7.0,zero/sd_415590_s0_g7.flac,learned/sd_415590_s0_g7.flac,zero
+p44,matched_clap,sd_146588,Innocent and playful classical music for orchestra featuring wind musical instruments such as oboes or fagots.,2,7.0,2.0,zero/sd_146588_s2_g2.flac,learned/sd_146588_s2_g7.flac,zero
+p45,same_g,sd_1093793,Electronic disco music about love that builds up quickly and has a dance beat to it,0,7.0,7.0,learned/sd_1093793_s0_g7.flac,zero/sd_1093793_s0_g7.flac,learned
+p46,matched_clap,sd_1194314,The song starts with a sad piano riff that has a wavy and mellow feel for someone who was hurt or is depressed that someone can bob their head to slowly in anguish,0,7.0,2.0,learned/sd_1194314_s0_g7.flac,zero/sd_1194314_s0_g2.flac,learned
+p47,matched_clap,sd_1069500,Elegant and pure sounds that convey a sense of order and cleanliness,0,7.0,2.0,learned/sd_1069500_s0_g7.flac,zero/sd_1069500_s0_g2.flac,learned

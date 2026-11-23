@@ -1,0 +1,21 @@
+name: null_music_v1
+master_seed: 2026
+output_dir: outputs
+
+null_tracks: data/null_tracks.csv
+sanity_tracks: data/sanity_tracks.csv
+max_seconds: 30.0
+
+inits: [zero]
+steps: 1500
+batch_size: 8
+lr: 0.005
+warmup: 100
+weight_decay: 0.0
+grad_clip: 1.0
+
+eval_every: 250
+eval_items: 64
+val_draws: 4
+sanity_draws: 2
+eval_batch: 8

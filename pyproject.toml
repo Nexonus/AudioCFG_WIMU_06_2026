@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audiocfg"
+version = "0.1.0"
+description = "Learned global CFG null embedding for a frozen Stable Audio Open (WIMU 2026Z, team 06)"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Jan Konarski" },
+    { name = "Jakub Szewczyk" },
+    { name = "Vladyslav Serhieiev" },
+]
+# Core: everything needed for configs, seeds, manifests, analysis and tests (no GPU).
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+    "pyarrow>=15",
+    "pydantic>=2.5",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "tqdm>=4.66",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+# Generator, null training and audio I/O (GPU; Kaggle T4 for full runs).
+models = [
+    "torch>=2.4",
+    "torchaudio>=2.4",
+    "diffusers>=0.32",
+    "transformers>=4.45",
+    "accelerate>=0.33",
+    "safetensors>=0.4",
+    "sentencepiece>=0.2",
+    "torchsde>=0.2.6",
+    "soundfile>=0.12",
+    "librosa>=0.10",
+]
+# Evaluation metrics.
+metrics = [
+    "audiobox_aesthetics>=0.0.4",
+]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "ipykernel>=6.29",
+]
+
+[project.scripts]
+audiocfg = "audiocfg.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"audiocfg.listen" = ["page.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "gpu: needs a CUDA GPU and model weights (skipped by default)",
+]
+addopts = "-m 'not gpu'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "NPY"]

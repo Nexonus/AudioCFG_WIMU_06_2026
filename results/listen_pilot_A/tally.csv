@@ -1,0 +1,5 @@
+condition,question,listeners,learned_pref,lo,hi,pairs,answers
+matched_clap,quality,2,0.7708,0.6458,0.875,24,48
+matched_clap,text,2,0.625,0.4792,0.7708,24,48
+same_g,quality,2,0.625,0.4792,0.7708,24,48
+same_g,text,2,0.4583,0.3125,0.6042,24,48

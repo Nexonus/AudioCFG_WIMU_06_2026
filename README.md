@@ -1,27 +1,34 @@
 # AudioCFG
-WIMU Project for CFG with Null Embeddings on an audio-generating stable diffusion model - Warsaw's University of Technology, Winter 2026
 
-PROJECT DESIGN PROPOSAL:
+WIMU 2026Z, Politechnika Warszawska, zespół 06: Jan Konarski, Jakub Szewczyk, Vladyslav Serhieiev.
 
-Project name: AudioCFG
+**Hipoteza.** Jeden globalny null CFG, wyuczony błędem odszumiania przy zamrożonym Stable Audio Open 1.0, poprawia jakość generacji przy porównywalnej zgodności z opisem i różnorodności, ponad to, co daje samo dostrojenie skali CFG. Ten sam embedding działa dla nowych promptów bez ponownego treningu.
 
-Github repository:  
+**Wszystko w jednym miejscu: [notebooks/prototyp_audiocfg.ipynb](notebooks/prototyp_audiocfg.ipynb).** Notatnik zawiera:
+- hipotezę i specyfikację: uczony tensor, cel treningowy, dane, metryki, kryterium przewagi,
+- porównanie z pracami z listy,
+- polecenia do odtworzenia każdego kroku,
+- wyniki: trening nulla, przemiatanie CFG, ocenę, odsłuch A/B i powtórkę na nowych promptach.
 
-Project topic: “What guidance does to generated audio: the guidance scale, the null embedding, diversity, copying and what judges prefer”.
+## Szybki start
 
-What needs to be done:
-A stable-diffusion model, that will use text prompts to generate audio or sound effects. Eg. “generate an effect of birds flying by on a windy autumn day.” This would yield a result audio wave in the dashboard.
-CFG Slider (Class-Free Guidance is a measure of how much creative freedom should we give a model, low values may cause problems as a model will not fully follow the prompt’s instructions. Too high values will make the neural network deterministic and sound highly synthetic. Our objective is to implement such hyperparameter and search for optimal values that will produce realistic audio following user’s instructions.
+```bash
+pip install -e ".[models,metrics,dev]"
+pytest
+audiocfg --help
+```
 
-Tech stack, Tools proposals:
-Python, Py-Torch
-Stable Audio Open: https://huggingface.co/stabilityai/stable-audio-open-1.0
-Gradio: https://gradio.app/guides/quickstart
-Evaluation libraries (CLAP, FAD) 
-https://github.com/gudgud96/frechet-audio-distance
-https://github.com/LAION-AI/CLAP
+Wyniki w `results/` są zacommitowane razem z manifestami (commit, hash configu, wersje pakietów, sha256 wejść i wyjść). Tabele i wykresy odtwarza się na CPU z tych plików, bez GPU. Obliczenia GPU działają na Kaggle przez joby w `kaggle/`.
 
-Evaluation metrics:
-CLAP (How much the generated audio is related to the input prompt, above 0.4 very good, 0.25 good, below 0.15 very bad).
-FAD (Sound’s quality and how much realistic the output audio is). 
-MOS (Mean Opinion Score - human-based evaluation, for example 10 listeners rating how much realistic the audio file is).
+## Struktura
+
+| Katalog | Zawartość |
+|---|---|
+| `src/audiocfg/` | kod: `models` (SAO i własna pętla CFG), `nulls`, `data`, `train`, `generate`, `metrics`, `analysis`, `listen`, `repro` |
+| `configs/` | jeden plik YAML na każdy etap |
+| `data/` | zamrożone listy utworów i promptów |
+| `results/` | wyniki z manifestami |
+| `kaggle/` | joby GPU, uruchamiane przez `kaggle/push.py` z konkretnego commita |
+| `notebooks/` | notatnik z propozycją, instrukcją odtworzenia i wynikami |
+
+`PROJECT_DESIGN.md` to pierwotna propozycja z października 2026. Zastąpił ją notatnik.

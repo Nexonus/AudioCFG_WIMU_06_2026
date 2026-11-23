@@ -1,0 +1,17 @@
+{
+  "id": "yibuxx/audiocfg",
+  "title": "audiocfg",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [
+    "brunosette/fma-large",
+    "chibuzokelechi/song-describer-dataset",
+    "dharmeshjoshi0/stable-audio-open-1-0"
+  ],
+  "competition_sources": [],
+  "kernel_sources": []
+}

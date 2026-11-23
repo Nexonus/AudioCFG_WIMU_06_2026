@@ -1,0 +1,79 @@
+{
+  "command": [
+    "D:\\studia\\Studia 2 stopnia\\Semestr 4\\WIMU\\AudioCFG_WIMU_06_2026\\.venv\\Scripts\\audiocfg",
+    "prepare-data"
+  ],
+  "config": {
+    "clotho_captions_csv": "data\\raw\\clotho\\clotho_captions_evaluation.csv",
+    "master_seed": 2026,
+    "name": "data",
+    "null_train_tracks": 2000,
+    "null_val_tracks": 300,
+    "output_dir": "data",
+    "prompts_per_domain": 48,
+    "sanity_tracks": 64,
+    "sao_fma_tracks": "data\\sao_fma_tracks.csv",
+    "song_describer_csv": "data\\raw\\song_describer\\song_describer.csv"
+  },
+  "config_class": "DataConfig",
+  "config_hash": "cee85230a86e6364f46ebb80f499612ee6f1e41c222e8d15baa519e260f4a83a",
+  "created_utc": "2026-11-21T23:48:34+00:00",
+  "device": {
+    "cuda": true,
+    "cuda_version": "12.6",
+    "gpus": [
+      "NVIDIA GeForce GTX 1660 Ti"
+    ]
+  },
+  "extra": {},
+  "git": {
+    "branch": "feat/learned-null",
+    "commit": "f152fca314939c4cb0d508b0fc75e5e2044fa98a",
+    "dirty": true
+  },
+  "inputs": {
+    "clotho_captions_csv": {
+      "path": "data\\raw\\clotho\\clotho_captions_evaluation.csv",
+      "sha256": "0e116233909a57449572b2d67d4c7a2f7df5b7a88c918f3697e61f684e664e84"
+    },
+    "sao_fma_tracks": {
+      "path": "data\\sao_fma_tracks.csv",
+      "sha256": "58b1a315c9d5145a79edb4cfe7640d9e76ddf28d7500a2b08f32990bd3d7a510"
+    },
+    "song_describer_csv": {
+      "path": "data\\raw\\song_describer\\song_describer.csv",
+      "sha256": "fb853b0327394cfdbdc205f712fdb64df70e6fcd3bae3a9d3f1617d54b45ad70"
+    }
+  },
+  "outputs": {
+    "eval_prompts": {
+      "path": "data\\eval_prompts.csv",
+      "sha256": "7fc29de0550ef5b849472015315323e03a441648797583e0dd5726dc2b5e3922"
+    },
+    "null_tracks": {
+      "path": "data\\null_tracks.csv",
+      "sha256": "ee65db3875ac3c66e4ddc5754f4c6ae82d84162badc54fe9a0eef75450791478"
+    },
+    "sanity_tracks": {
+      "path": "data\\sanity_tracks.csv",
+      "sha256": "d1d6d33591b06c18519423b736408df6f48d81912a76d0de8073e8a3677a8510"
+    }
+  },
+  "packages": {
+    "accelerate": "1.16.0",
+    "audiobox_aesthetics": null,
+    "audiocfg": "0.1.0",
+    "diffusers": "0.43.0",
+    "laion-clap": null,
+    "numpy": "2.5.5",
+    "openl3": null,
+    "pandas": "3.1.1",
+    "safetensors": "0.8.0",
+    "scipy": "1.18.1",
+    "torch": "2.14.1+cu126",
+    "torchaudio": "2.11.0+cu126",
+    "transformers": "5.24.0"
+  },
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.2"
+}
